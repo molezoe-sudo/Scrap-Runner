@@ -62,6 +62,60 @@
            border:1px solid rgba(56,232,255,0.4); border-radius:6px; padding:8px 13px; font:12px 'Share Tech Mono',monospace; cursor:pointer; text-shadow:0 0 6px rgba(56,232,255,0.6); }
   #fsBtn:hover { background:rgba(56,232,255,0.2); }
   @media (min-width:1280px){ .panel{ display:flex; } }
+
+  /* ============================================================
+     SCRAP RUNNER — DESIGN TOKENS (from scrap-runner-tokens.css)
+     ============================================================ */
+  :root {
+    --sr-structure:   #38e8ff;
+    --sr-accent:      #ff2da0;
+    --sr-currency:    #ffd166;
+    --sr-health:      #5ce28a;
+    --sr-charge:      #c77dff;
+    --sr-heat:        #ff7849;
+    --sr-danger:      #ff5470;
+    --sr-muted:       #5a6a8a;
+    --sr-void:        #04060c;
+    --sr-field:       #080a16;
+    --sr-panel:       rgba(8,12,26,0.85);
+    --sr-panel-fill:  rgba(8,12,26,0.55);
+    --sr-ink:         #e8eefc;
+    --sr-ink-dim:     #9fb0cf;
+    --sr-burning:     #ff8c42;
+    --sr-shocked:     #7aa2ff;
+    --sr-marked:      #ffd166;
+    --sr-fractured:   #ff5470;
+    --sr-chilled:     #aef0ff;
+    --sr-kinetic:     #38e8ff;
+    --sr-thermal:     #ff7849;
+    --sr-shock:       #7aa2ff;
+    --sr-cryo:        #aef0ff;
+    --sr-common:      #9fb0cf;
+    --sr-rare:        #38e8ff;
+    --sr-epic:        #c77dff;
+    --sr-legendary:   #ffd166;
+    --sr-font-display: 'Orbitron', sans-serif;
+    --sr-font-mono:    'Share Tech Mono', monospace;
+    --sr-notch-sm: 8px;
+    --sr-notch-md: 12px;
+    --sr-notch-lg: 16px;
+    --sr-gap: 14px;
+  }
+  @keyframes sr-scan    { from { background-position:0 0; } to { background-position:0 3px; } }
+  @keyframes sr-pulse   { 0%,100%{ opacity:1; } 50%{ opacity:0.25; } }
+  @keyframes sr-flicker { 0%,100%{ opacity:1; } 47%{ opacity:1; } 50%{ opacity:0.35; } 53%{ opacity:1; } }
+  @keyframes sr-thrust  { 0%,100%{ opacity:0.55; transform:scaleY(0.85); } 50%{ opacity:1; transform:scaleY(1.25); } }
+  @keyframes sr-dial    { from { stroke-dashoffset:var(--circ); } to { stroke-dashoffset:var(--off); } }
+  @keyframes sr-ready-glow { 0%,100%{ box-shadow:0 0 10px rgba(199,125,255,0.55),inset 0 0 16px rgba(199,125,255,0.25); } 50%{ box-shadow:0 0 22px rgba(199,125,255,0.85),inset 0 0 22px rgba(199,125,255,0.40); } }
+  @keyframes sr-shimmer { 0%{ opacity:0.3; } 50%{ opacity:0.8; } 100%{ opacity:0.3; } }
+  @keyframes sr-spin    { from{ transform:rotate(0); } to{ transform:rotate(360deg); } }
+  .sr-panel { border:1px solid rgba(56,232,255,0.22); background:linear-gradient(180deg,rgba(20,28,54,0.40),rgba(8,12,26,0.55)); clip-path:polygon(0 var(--sr-notch-lg),var(--sr-notch-lg) 0,100% 0,100% calc(100% - var(--sr-notch-lg)),calc(100% - var(--sr-notch-lg)) 100%,0 100%); box-shadow:inset 0 0 34px rgba(56,232,255,0.06); }
+  .sr-scanlines { background:repeating-linear-gradient(0deg,rgba(56,232,255,0.05) 0 1px,transparent 1px 4px); }
+  .sr-rule { height:1px; background:linear-gradient(90deg,rgba(56,232,255,0.5),transparent); }
+  .sr-btn-special { font-family:var(--sr-font-display); color:#fff; border:1.6px solid var(--sr-charge); background:rgba(199,125,255,0.22); clip-path:polygon(0 9px,9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%); animation:sr-ready-glow 1.8s infinite; }
+  .sr-seg-on  { background:var(--sr-health); box-shadow:0 0 5px var(--sr-health); }
+  .sr-seg-off { background:rgba(255,255,255,0.07); }
+  .sr-icon { width:32px; height:32px; display:inline-block; }
 </style>
 </head>
 <body>
@@ -102,6 +156,70 @@
     </div>
     <div class="pftr"><span>NODE//7G</span><span>LINK ●</span></div>
   </aside>
+  <svg id="sr-sprites" xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+
+  <symbol id="ship_standard" viewBox="0 0 64 64"><g><ellipse cx="32" cy="53" rx="7" ry="10" fill="#38e8ff" opacity="0.5" style="filter:blur(3px); transform-origin:32px 51px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 6 L37 26 L54 47 L42 43 L37 53 L27 53 L22 43 L10 47 L27 26 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M32 12 L32 30 M28 28 L22.5 43 M36 28 L41.5 43 M27 48 L37 48"></path></g> <path d="M32 16 Q35.5 21 34 29 L30 29 Q28.5 21 32 16 Z" fill="#08263a" stroke="#7fd9ff" stroke-width="0.8"></path> <circle cx="32" cy="24" r="2" fill="#ff2da0" style="filter:drop-shadow(0 0 3px #ff2da0);"></circle> <g fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"><circle cx="53" cy="46.5" r="1.6"></circle><circle cx="11" cy="46.5" r="1.6"></circle></g></symbol>
+  <symbol id="ship_wake" viewBox="0 0 64 64"><g stroke="#38e8ff" stroke-width="1.4" opacity="0.35" stroke-linecap="round"><path d="M28 52 L26 63 M36 52 L38 63"></path></g> <g><ellipse cx="29" cy="51" rx="2.8" ry="6" fill="#9fe8ff" opacity="0.6" style="filter:blur(2px); transform-origin:29px 49px; "></ellipse><ellipse cx="35" cy="51" rx="2.8" ry="6" fill="#9fe8ff" opacity="0.6" style="filter:blur(2px); transform-origin:35px 49px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 5 L34 27 L48 57 L37 48 L34 46 L30 46 L27 48 L16 57 L30 27 Z"></path><path d="M32 16 L40 22 L37 27 L32 24 L27 27 L24 22 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M32 11 L32 46 M31 33 L27 48 M33 33 L37 48"></path></g> <g stroke="#ff2da0" stroke-width="1.5" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #ff2da0);"><path d="M31 31 L26 50 M33 31 L38 50"></path></g> <circle cx="32" cy="22" r="2" fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"></circle> <g fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"><circle cx="40" cy="22" r="1.3"></circle><circle cx="24" cy="22" r="1.3"></circle></g></symbol>
+  <symbol id="ship_aegis" viewBox="0 0 64 64"><g><ellipse cx="32" cy="53" rx="8" ry="8" fill="#38e8ff" opacity="0.45" style="filter:blur(3px); transform-origin:32px 51px; "></ellipse></g> <g stroke="#7fd9ff" stroke-width="1.6" fill="none" opacity="0.8" stroke-linecap="round" style="filter:drop-shadow(0 0 4px #38e8ff);"><path d="M8 22 A12 12 0 0 0 8 42"></path><path d="M56 22 A12 12 0 0 1 56 42"></path></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 8 L46 15 L51 30 L48 44 L40 53 L24 53 L16 44 L13 30 L18 15 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M22 18 L42 18 M16 31 L48 31 M20 44 L44 44 M32 18 L32 12"></path></g> <g fill="#11314a" stroke="#3a6e88" stroke-width="0.9"><rect x="26" y="20" width="12" height="9" rx="1"></rect></g> <rect x="28.5" y="33" width="7" height="8" fill="#ff2da0" opacity="0.9" style="filter:drop-shadow(0 0 3px #ff2da0);"></rect> <g fill="#7fd9ff" style="filter:drop-shadow(0 0 4px #38e8ff);"><circle cx="14" cy="32" r="2.2"></circle><circle cx="50" cy="32" r="2.2"></circle></g></symbol>
+  <symbol id="ship_vanguard" viewBox="0 0 64 64"><g><ellipse cx="32" cy="53" rx="6" ry="9" fill="#38e8ff" opacity="0.5" style="filter:blur(3px); transform-origin:32px 51px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 7 L40 17 L43 36 L39 51 L25 51 L21 36 L24 17 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M32 12 L32 30 M27 17 L25 36 M37 17 L39 36 M25 44 L39 44"></path></g> <path d="M29 38 L32 41 L35 38" fill="none" stroke="#5fd0ff" stroke-width="1"></path> <path d="M32 16 Q35 21 34 29 L30 29 Q29 21 32 16 Z" fill="#08263a" stroke="#7fd9ff" stroke-width="0.8"></path> <circle cx="32" cy="24" r="1.8" fill="#ff2da0" style="filter:drop-shadow(0 0 3px #ff2da0);"></circle> <g fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"><circle cx="43" cy="35" r="1.5"></circle><circle cx="21" cy="35" r="1.5"></circle></g></symbol>
+  <symbol id="ship_reaver" viewBox="0 0 64 64"><g><ellipse cx="32" cy="52" rx="5" ry="9" fill="#38e8ff" opacity="0.5" style="filter:blur(3px); transform-origin:32px 50px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 5 L37 26 L41 50 L33 43 L33 53 L31 53 L31 43 L23 50 L27 26 Z"></path><path d="M37 26 L44 19 L40 29 Z"></path><path d="M27 26 L20 19 L24 29 Z"></path></g> <g stroke="#ff2da0" stroke-width="1.4" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #ff2da0);"><path d="M34 24 L39 47 M30 24 L25 47"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M32 12 L32 40"></path></g> <circle cx="32" cy="22" r="1.8" fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"></circle></symbol>
+  <symbol id="ship_reliquary" viewBox="0 0 64 64"><g><ellipse cx="32" cy="53" rx="7" ry="9" fill="#38e8ff" opacity="0.5" style="filter:blur(3px); transform-origin:32px 51px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 7 L42 13 L46 30 L42 48 L32 53 L22 48 L18 30 L22 13 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M24 18 Q32 13 40 18 M22 33 Q32 27 42 33 M27 45 L37 45"></path></g> <circle cx="32" cy="9" r="1.6" fill="#7fd9ff" style="filter:drop-shadow(0 0 3px #38e8ff);"></circle> <rect x="27" y="27" width="10" height="13" fill="#08263a" stroke="#7fd9ff" stroke-width="0.8"></rect> <path d="M32 29 L36 33.5 L32 38 L28 33.5 Z" fill="#ff2da0" style="filter:drop-shadow(0 0 4px #ff2da0);"></path> <g fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"><circle cx="45" cy="30" r="1.4"></circle><circle cx="19" cy="30" r="1.4"></circle></g></symbol>
+  <symbol id="ship_choirmaster" viewBox="0 0 64 64"><g><ellipse cx="32" cy="53" rx="5" ry="8" fill="#38e8ff" opacity="0.5" style="filter:blur(3px); transform-origin:32px 51px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M32 8 L38 22 L37 51 L27 51 L26 22 Z"></path><path d="M26 26 L13 30 L12 45 L24 47 Z"></path><path d="M38 26 L51 30 L52 45 L40 47 Z"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M32 13 L32 30 M18 32 L18 43 M46 32 L46 43"></path></g> <g fill="#bff4ff" style="filter:drop-shadow(0 0 3px #38e8ff);"><circle cx="18" cy="36" r="1.6"></circle><circle cx="46" cy="36" r="1.6"></circle><circle cx="18" cy="41" r="1.2"></circle><circle cx="46" cy="41" r="1.2"></circle></g> <circle cx="32" cy="26" r="1.8" fill="#ff2da0" style="filter:drop-shadow(0 0 3px #ff2da0);"></circle></symbol>
+  <symbol id="ship_scrapwright" viewBox="0 0 64 64"><g><ellipse cx="33" cy="52" rx="6" ry="9" fill="#38e8ff" opacity="0.45" style="filter:blur(3px); transform-origin:33px 50px; "></ellipse></g> <g fill="#0c1b2e" stroke="#38e8ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(56,232,255,0.55));"><path d="M30 7 L41 24 L53 44 L41 41 L37 52 L26 52 L20 40 L11 47 L25 25 Z"></path></g> <path d="M34 28 L46 40 L40 40 L36 36 Z" fill="#11243a" stroke="#3a6678" stroke-width="0.9"></path> <g fill="none" stroke="#2f6f8a" stroke-width="1.1" stroke-linecap="round"><path d="M30 13 L34 26 M26 31 L22 41"></path></g> <rect x="29" y="30" width="6" height="4" fill="#ff7849" opacity="0.85" style="filter:drop-shadow(0 0 4px #ff7849);"></rect> <g fill="#5fb6c4"><circle cx="38" cy="34" r="0.9"></circle><circle cx="42" cy="38" r="0.9"></circle><circle cx="27" cy="44" r="0.9"></circle></g> <circle cx="31" cy="24" r="1.6" fill="#ff2da0" style="filter:drop-shadow(0 0 3px #ff2da0);"></circle></symbol>
+  <symbol id="enemy_drifter" viewBox="0 0 64 64"><g><ellipse cx="32" cy="29" rx="6" ry="8" fill="#ff8c42" opacity="0.4" style="filter:blur(3px); transform-origin:32px 31px; "></ellipse></g> <g fill="#170d08" stroke="#ff8c42" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,140,66,0.5));"><path d="M32 57 L45 33 L37 36 L32 30 L27 36 L19 33 Z"></path></g> <g fill="#2a160c" stroke="#7a3f1e" stroke-width="0.9"><path d="M28 37 L36 37 L34 48 L30 48 Z"></path><path d="M38 35 L44 33 L41 40 L38 39 Z"></path></g> <g fill="none" stroke="#7a3f1e" stroke-width="0.9" stroke-dasharray="2 2"><path d="M32 48 L32 55 M28 37 L21 34"></path></g> <g fill="#5fb6c4"><circle cx="29" cy="39" r="0.9"></circle><circle cx="35" cy="39" r="0.9"></circle><circle cx="31" cy="46" r="0.9"></circle></g> <circle cx="32" cy="40" r="2.4" fill="#ffcaa0" style="filter:drop-shadow(0 0 4px #ff8c42);"></circle></symbol>
+  <symbol id="enemy_weaver" viewBox="0 0 64 64"><g><ellipse cx="32" cy="30" rx="5" ry="7" fill="#ffd166" opacity="0.4" style="filter:blur(3px); transform-origin:32px 32px; "></ellipse></g> <g fill="#161204" stroke="#ffd166" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,209,102,0.45));"><path d="M32 57 L40 39 L48 27 L37 33 L33 30 L31 30 L27 33 L16 27 L24 39 Z"></path></g> <g fill="#2a2410" stroke="#7a661f" stroke-width="0.9"><path d="M29 34 L35 34 L34 46 L30 46 Z"></path></g> <g fill="none" stroke="#7a661f" stroke-width="0.9" stroke-dasharray="2 2"><path d="M32 46 L32 55 M40 39 L46 30 M24 39 L18 30"></path></g> <g fill="#5fb6c4"><circle cx="30" cy="37" r="0.9"></circle><circle cx="34" cy="37" r="0.9"></circle></g> <circle cx="32" cy="40" r="2.2" fill="#ffe9a8" style="filter:drop-shadow(0 0 4px #ffd166);"></circle></symbol>
+  <symbol id="enemy_gunner" viewBox="0 0 64 64"><g><ellipse cx="25" cy="28" rx="3.5" ry="6" fill="#ff5470" opacity="0.4" style="filter:blur(2px); transform-origin:25px 30px; "></ellipse><ellipse cx="39" cy="28" rx="3.5" ry="6" fill="#ff5470" opacity="0.4" style="filter:blur(2px); transform-origin:39px 30px; "></ellipse></g> <rect x="29.5" y="44" width="5" height="13" fill="#170910" stroke="#ff5470" stroke-width="1.6"></rect> <ellipse cx="32" cy="57" rx="3" ry="2" fill="#ff5470" opacity="0.6" style="filter:blur(2px); "></ellipse> <g fill="#190910" stroke="#ff5470" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,84,112,0.5));"><path d="M21 28 L43 28 L45 42 L35 46 L29 46 L19 42 Z"></path></g> <g fill="#2c1018" stroke="#7a2435" stroke-width="0.9"><rect x="25" y="31" width="14" height="9" rx="1"></rect></g> <g fill="none" stroke="#7a2435" stroke-width="0.9" stroke-dasharray="2 2"><path d="M21 33 L45 33"></path></g> <g fill="#5fb6c4"><circle cx="24" cy="30" r="0.9"></circle><circle cx="40" cy="30" r="0.9"></circle><circle cx="24" cy="42" r="0.9"></circle><circle cx="40" cy="42" r="0.9"></circle></g> <circle cx="32" cy="36" r="2.6" fill="#ff97ab" style="filter:drop-shadow(0 0 4px #ff5470);"></circle></symbol>
+  <symbol id="enemy_tank" viewBox="0 0 64 64"><g><ellipse cx="32" cy="28" rx="9" ry="7" fill="#c44569" opacity="0.4" style="filter:blur(3px); transform-origin:32px 30px; "></ellipse></g> <g fill="#160810" stroke="#d8557a" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(196,69,105,0.5));"><path d="M19 27 L45 27 L47 43 L41 51 L23 51 L17 43 Z"></path></g> <g fill="#2a1018" stroke="#7e2d44" stroke-width="0.9"><rect x="22" y="30" width="9" height="11"></rect><rect x="33" y="30" width="9" height="11"></rect></g> <g fill="none" stroke="#7e2d44" stroke-width="0.9" stroke-dasharray="2 2"><path d="M17 44 L47 44 M32 27 L32 51"></path></g> <g fill="#5fb6c4"><circle cx="23" cy="32" r="1"></circle><circle cx="41" cy="32" r="1"></circle><circle cx="23" cy="48" r="1"></circle><circle cx="41" cy="48" r="1"></circle></g> <rect x="28" y="44" width="8" height="3.4" rx="1" fill="#e093ab" style="filter:drop-shadow(0 0 4px #c44569);"></rect></symbol>
+  <symbol id="enemy_swarmling" viewBox="0 0 64 64"><g><ellipse cx="32" cy="36" rx="3.5" ry="5" fill="#ff8c42" opacity="0.4" style="filter:blur(2px); transform-origin:32px 38px; "></ellipse></g> <g fill="#170d08" stroke="#ff8c42" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,140,66,0.5));"><path d="M32 51 L41 39 L32 35 L23 39 Z"></path></g> <g fill="#5fb6c4"><circle cx="29" cy="41" r="0.8"></circle><circle cx="35" cy="41" r="0.8"></circle></g> <circle cx="32" cy="42" r="1.8" fill="#ffcaa0" style="filter:drop-shadow(0 0 4px #ff8c42);"></circle></symbol>
+  <symbol id="enemy_brute" viewBox="0 0 64 64"><g><ellipse cx="32" cy="26" rx="9" ry="7" fill="#ff5470" opacity="0.4" style="filter:blur(3px); transform-origin:32px 28px; "></ellipse></g> <g fill="#190910" stroke="#ff5470" stroke-width="1.4"><rect x="21.5" y="47" width="3" height="6"></rect><rect x="30.5" y="48" width="3" height="7"></rect><rect x="39.5" y="47" width="3" height="6"></rect></g> <g fill="#190910" stroke="#ff5470" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,84,112,0.5));"><path d="M16 26 L48 26 L50 42 L43 48 L21 48 L14 42 Z"></path></g> <g fill="#2c1018" stroke="#7a2435" stroke-width="0.9"><rect x="21" y="30" width="22" height="11" rx="1"></rect></g> <g fill="none" stroke="#7a2435" stroke-width="0.9" stroke-dasharray="2 2"><path d="M32 30 L32 41"></path></g> <g fill="#5fb6c4"><circle cx="24" cy="32" r="0.9"></circle><circle cx="40" cy="32" r="0.9"></circle><circle cx="24" cy="39" r="0.9"></circle><circle cx="40" cy="39" r="0.9"></circle></g> <circle cx="32" cy="35" r="3.2" fill="#ff97ab" style="filter:drop-shadow(0 0 4px #ff5470);"></circle></symbol>
+  <symbol id="enemy_carrier" viewBox="0 0 64 64"><g><ellipse cx="32" cy="26" rx="7" ry="6" fill="#ff9d4d" opacity="0.4" style="filter:blur(3px); transform-origin:32px 28px; "></ellipse></g> <g fill="#1a0f06" stroke="#ff9d4d" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,157,77,0.5));"><path d="M32 52 L48 38 L44 24 L20 24 L16 38 Z"></path></g> <g fill="#2a1808" stroke="#7e4d1e" stroke-width="0.9"><rect x="22" y="40" width="7" height="8"></rect><rect x="35" y="40" width="7" height="8"></rect></g> <g fill="#ffce9e" style="filter:drop-shadow(0 0 4px #ff9d4d);"><circle cx="25.5" cy="44" r="1.4"></circle><circle cx="38.5" cy="44" r="1.4"></circle></g> <g fill="#5fb6c4"><circle cx="24" cy="28" r="0.9"></circle><circle cx="40" cy="28" r="0.9"></circle></g> <circle cx="32" cy="32" r="2.6" fill="#ffce9e" style="filter:drop-shadow(0 0 4px #ff9d4d);"></circle></symbol>
+  <symbol id="enemy_shielddrone" viewBox="0 0 64 64"><g><ellipse cx="32" cy="24" rx="5" ry="5" fill="#7fd9ff" opacity="0.35" style="filter:blur(3px); transform-origin:32px 26px; "></ellipse></g> <g fill="#0a1622" stroke="#7fd9ff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(127,217,255,0.5));"><path d="M32 50 L46 42 L46 26 L32 18 L18 26 L18 42 Z"></path></g> <g fill="none" stroke="#7fd9ff" stroke-width="1" opacity="0.55"><path d="M22 32 A12 12 0 0 1 42 32"></path></g> <g fill="none" stroke="#2f6f8a" stroke-width="0.9" stroke-dasharray="2 3"><path d="M18 34 L8 30 M46 34 L56 30"></path></g> <g fill="#5fb6c4"><circle cx="26" cy="30" r="0.9"></circle><circle cx="38" cy="30" r="0.9"></circle></g> <circle cx="32" cy="35" r="3" fill="#cdf6ff" style="filter:drop-shadow(0 0 5px #38e8ff); "></circle></symbol>
+  <symbol id="enemy_repair" viewBox="0 0 64 64"><g><ellipse cx="32" cy="24" rx="5" ry="5" fill="#5ce28a" opacity="0.35" style="filter:blur(3px); transform-origin:32px 26px; "></ellipse></g> <g fill="#08160e" stroke="#5ce28a" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(92,226,138,0.5));"><path d="M27 20 L37 20 L37 30 L47 30 L47 40 L37 40 L37 50 L27 50 L27 40 L17 40 L17 30 L27 30 Z"></path></g> <g fill="none" stroke="#2e6a44" stroke-width="0.9" stroke-dasharray="2 2"><path d="M32 40 L32 50"></path></g> <g fill="#5fb6c4"><circle cx="29" cy="33" r="0.9"></circle><circle cx="35" cy="33" r="0.9"></circle></g> <circle cx="32" cy="35" r="2.6" fill="#b6f5cf" style="filter:drop-shadow(0 0 4px #5ce28a);"></circle></symbol>
+  <symbol id="enemy_leech" viewBox="0 0 64 64"><g><ellipse cx="32" cy="26" rx="5" ry="6" fill="#c77dff" opacity="0.35" style="filter:blur(3px); transform-origin:32px 28px; "></ellipse></g> <g fill="none" stroke="#c77dff" stroke-width="1.5" stroke-linecap="round" opacity="0.85" style="filter:drop-shadow(0 0 3px #c77dff);"><path d="M26 46 Q24 54 27 59 M32 47 Q32 56 33 60 M38 46 Q40 54 37 59"></path></g> <g fill="#140a1c" stroke="#c77dff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(199,125,255,0.5));"><path d="M32 22 Q44 26 42 38 Q40 47 32 47 Q24 47 22 38 Q20 26 32 22 Z"></path></g> <g fill="none" stroke="#5a3a7a" stroke-width="0.9" stroke-dasharray="2 2"><path d="M26 30 Q32 33 38 30"></path></g> <circle cx="32" cy="35" r="3" fill="#e6c9ff" style="filter:drop-shadow(0 0 4px #c77dff);"></circle></symbol>
+  <symbol id="enemy_assassin" viewBox="0 0 64 64"><g fill="none" stroke="#b46aff" stroke-width="1.4" opacity="0.3"><path d="M37 56 L42 30 L37 22 L32 30 Z"></path></g> <g><ellipse cx="32" cy="26" rx="3" ry="5" fill="#b46aff" opacity="0.35" style="filter:blur(2px); transform-origin:32px 28px; "></ellipse></g> <g fill="#120a1c" stroke="#b46aff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(180,106,255,0.5));"><path d="M32 57 L37 30 L32 21 L27 30 Z"></path></g> <g fill="#b46aff" opacity="0.7"><rect x="40" y="36" width="3" height="1"></rect><rect x="22" y="42" width="3" height="1"></rect></g> <circle cx="32" cy="33" r="2" fill="#ddb8ff" style="filter:drop-shadow(0 0 4px #b46aff);"></circle></symbol>
+  <symbol id="enemy_artillery" viewBox="0 0 64 64"><g><ellipse cx="32" cy="24" rx="7" ry="6" fill="#ff5470" opacity="0.35" style="filter:blur(3px); transform-origin:32px 26px; "></ellipse></g> <rect x="29" y="40" width="6" height="17" fill="#190910" stroke="#ff5470" stroke-width="1.6"></rect> <ellipse cx="32" cy="57" rx="3" ry="2" fill="#ff5470" opacity="0.6" style="filter:blur(2px); "></ellipse> <g fill="#190910" stroke="#ff5470" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,84,112,0.5));"><path d="M18 24 L46 24 L48 38 L40 42 L24 42 L16 38 Z"></path></g> <g fill="none" stroke="#7a2435" stroke-width="0.9" stroke-dasharray="2 2"><path d="M18 30 L46 30"></path></g> <g fill="#5fb6c4"><circle cx="22" cy="27" r="0.9"></circle><circle cx="42" cy="27" r="0.9"></circle></g> <circle cx="32" cy="32" r="2.6" fill="#ff97ab" style="filter:drop-shadow(0 0 4px #ff5470);"></circle></symbol>
+  <symbol id="enemy_mimic" viewBox="0 0 64 64"><g><ellipse cx="32" cy="24" rx="4" ry="5" fill="#ffd166" opacity="0.3" style="filter:blur(2px); transform-origin:32px 26px; "></ellipse></g> <g fill="#1a1404" stroke="#ffd166" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(255,209,102,0.45));"><path d="M32 18 L46 32 L32 46 L18 32 Z"></path></g> <path d="M32 26 L38 32 L32 38 L26 32 Z" fill="#2a2110" stroke="#7a661f" stroke-width="0.8"></path> <ellipse cx="32" cy="31" rx="3" ry="1.4" fill="#ff5470" style="filter:drop-shadow(0 0 4px #ff5470); "></ellipse> <g stroke="#ff5470" stroke-width="0.9" stroke-linecap="round"><path d="M29 35 L30 37 M32 35 L33 37 M35 35 L36 37"></path></g></symbol>
+  <symbol id="boss_warden" viewBox="0 0 160 160"><g fill="#190910" stroke="#ff5470" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(255,84,112,0.5));"><path d="M80 146 L132 114 L132 46 L80 14 L28 46 L28 114 Z"></path></g> <g fill="none" stroke="#7a2435" stroke-width="1.6"><path d="M44 52 L116 52 M30 80 L130 80 M44 108 L116 108"></path></g> <g fill="#2c1018" stroke="#ff5470" stroke-width="1.4"><rect x="38" y="40" width="14" height="12"></rect><rect x="108" y="40" width="14" height="12"></rect></g> <g fill="#5fb6c4"><circle cx="36" cy="60" r="1.6"></circle><circle cx="124" cy="60" r="1.6"></circle><circle cx="36" cy="100" r="1.6"></circle><circle cx="124" cy="100" r="1.6"></circle></g> <circle cx="80" cy="82" r="22" fill="#2c1018" stroke="#ff5470" stroke-width="1.6"></circle> <circle cx="80" cy="82" r="11" fill="#ff97ab" style="filter:drop-shadow(0 0 14px #ff5470); "></circle></symbol>
+  <symbol id="boss_choir" viewBox="0 0 160 160"><g fill="#140a1c" stroke="#c77dff" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(199,125,255,0.5));"><circle cx="80" cy="48" r="27"></circle><circle cx="118" cy="74" r="27"></circle><circle cx="103" cy="118" r="27"></circle><circle cx="57" cy="118" r="27"></circle><circle cx="42" cy="74" r="27"></circle></g> <g fill="none" stroke="#5a3a7a" stroke-width="1.2"><circle cx="80" cy="48" r="14"></circle><circle cx="118" cy="74" r="14"></circle><circle cx="103" cy="118" r="14"></circle><circle cx="57" cy="118" r="14"></circle><circle cx="42" cy="74" r="14"></circle></g> <circle cx="80" cy="84" r="19" fill="#1c1230" stroke="#c77dff" stroke-width="1.6"></circle> <circle cx="80" cy="84" r="9" fill="#e6c9ff" style="filter:drop-shadow(0 0 14px #c77dff); "></circle></symbol>
+  <symbol id="boss_dread" viewBox="0 0 160 160"><g fill="#190910" stroke="#ff4d6d" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(255,77,109,0.5));"><path d="M80 146 L120 112 L138 62 L108 32 L92 44 L80 22 L68 44 L52 32 L22 62 L40 112 Z"></path></g> <g fill="none" stroke="#7a2435" stroke-width="1.4"><path d="M80 40 L80 120 M56 50 L66 100 M104 50 L94 100"></path></g> <g fill="#2c1018" stroke="#7a2435" stroke-width="1"><path d="M62 56 L98 56 L92 78 L68 78 Z"></path></g> <g fill="#5fb6c4"><circle cx="58" cy="60" r="1.6"></circle><circle cx="102" cy="60" r="1.6"></circle><circle cx="80" cy="110" r="1.6"></circle></g> <circle cx="80" cy="74" r="14" fill="#2c1018" stroke="#ff4d6d" stroke-width="1.6"></circle> <circle cx="80" cy="74" r="8" fill="#ff97ab" style="filter:drop-shadow(0 0 14px #ff4d6d); "></circle></symbol>
+  <symbol id="boss_sun" viewBox="0 0 160 160"><g fill="#1a0f06" stroke="#ff8c42" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(255,140,66,0.5));"><path d="M80 8 L89 45 L116 18 L105 55 L142 44 L115 71 L152 80 L115 89 L142 116 L105 105 L116 142 L89 115 L80 152 L71 115 L44 142 L55 105 L18 116 L45 89 L8 80 L45 71 L18 44 L55 55 L44 18 L71 45 Z"></path></g> <circle cx="80" cy="80" r="24" fill="#0a0804" stroke="#ff8c42" stroke-width="2"></circle> <g fill="#5fb6c4"><circle cx="80" cy="60" r="1.6"></circle><circle cx="100" cy="80" r="1.6"></circle><circle cx="80" cy="100" r="1.6"></circle><circle cx="60" cy="80" r="1.6"></circle></g> <circle cx="80" cy="80" r="11" fill="#ffce9e" style="filter:drop-shadow(0 0 16px #ff8c42); "></circle></symbol>
+  <symbol id="boss_node" viewBox="0 0 160 160"><g style="transform-origin:80px 80px; "><g fill="#14243a" stroke="#7aa2ff" stroke-width="1.6"><rect x="76" y="14" width="8" height="8"></rect><rect x="138" y="76" width="8" height="8"></rect><rect x="76" y="138" width="8" height="8"></rect><rect x="14" y="76" width="8" height="8"></rect></g></g> <g fill="#0c1422" stroke="#7aa2ff" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(122,162,255,0.5));"><path d="M80 26 L126 80 L80 134 L34 80 Z"></path></g> <g fill="none" stroke="#3a567e" stroke-width="1.2"><path d="M80 26 L80 134 M34 80 L126 80"></path></g> <g fill="#5fb6c4"><circle cx="80" cy="50" r="1.6"></circle><circle cx="80" cy="110" r="1.6"></circle></g> <circle cx="80" cy="80" r="13" fill="#15233c" stroke="#7aa2ff" stroke-width="1.4"></circle> <circle cx="80" cy="80" r="8" fill="#b9cdff" style="filter:drop-shadow(0 0 14px #7aa2ff); "></circle></symbol>
+  <symbol id="boss_hive" viewBox="0 0 160 160"><g fill="#08160e" stroke="#5ce28a" stroke-width="3" stroke-linejoin="round" style="filter:drop-shadow(0 0 8px rgba(92,226,138,0.5));"><path d="M20 92 Q80 18 140 92 Q80 122 20 92 Z"></path></g> <g fill="none" stroke="#2e6a44" stroke-width="1.3"><path d="M52 78 L60 73 L68 78 L68 88 L60 93 L52 88 Z"></path><path d="M72 70 L80 65 L88 70 L88 80 L80 85 L72 80 Z"></path><path d="M92 78 L100 73 L108 78 L108 88 L100 93 L92 88 Z"></path></g> <g fill="#5fb6c4"><circle cx="44" cy="90" r="1.6"></circle><circle cx="116" cy="90" r="1.6"></circle></g> <circle cx="80" cy="86" r="15" fill="#0e2418" stroke="#5ce28a" stroke-width="1.5"></circle> <circle cx="80" cy="86" r="8" fill="#b6f5cf" style="filter:drop-shadow(0 0 14px #5ce28a); "></circle></symbol>
+  <symbol id="weapon_repeater" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 27 L22 27"></path><path d="M13 23 L13 14 M16 23 L16 9 M19 23 L19 14"></path><circle cx="13" cy="12" r="0.6"></circle><circle cx="16" cy="7" r="0.6"></circle><circle cx="19" cy="12" r="0.6"></circle></g></symbol>
+  <symbol id="weapon_scatter" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 27 L16 21"></path><path d="M16 21 L8 9 M16 21 L12 7 M16 21 L16 5 M16 21 L20 7 M16 21 L24 9"></path><circle cx="8" cy="9" r="0.6"></circle><circle cx="12" cy="7" r="0.6"></circle><circle cx="16" cy="5" r="0.6"></circle><circle cx="20" cy="7" r="0.6"></circle><circle cx="24" cy="9" r="0.6"></circle></g></symbol>
+  <symbol id="weapon_rail" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 29 L16 7"></path><path d="M12 8 L16 3 L20 8"></path><path d="M11 13 L21 13 M11 18 L21 18 M11 23 L21 23"></path></g></symbol>
+  <symbol id="weapon_splitshot" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 29 L16 17"></path><path d="M16 17 L8 6 M16 17 L24 6"></path><path d="M5 9 L8 5 L11 9 M21 9 L24 5 L27 9"></path></g></symbol>
+  <symbol id="weapon_torch" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 29 L16 23"></path><path d="M11 23 L21 23"></path><path d="M16 23 C10 17 13 8 16 4 C19 8 22 17 16 23 Z"></path></g></symbol>
+  <symbol id="weapon_missilepod" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="15" width="14" height="12" rx="1"></rect><path d="M11 15 L13 15 L12 8 Z M15 15 L17 15 L16 6 Z M19 15 L21 15 L20 8 Z"></path></g></symbol>
+  <symbol id="weapon_mortar" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 27 L13 18"></path><path d="M14 14 Q23 5 27 25" stroke-dasharray="2 2.5"></path><circle cx="14" cy="14" r="1.8"></circle></g></symbol>
+  <symbol id="weapon_seekerpod" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 25 L11 13 L13 9 L15 13 L15 25 Z"></path><path d="M15 16 Q24 14 24 23" stroke-dasharray="2 2.5"></path><circle cx="24" cy="24" r="2.4"></circle></g></symbol>
+  <symbol id="weapon_witchlight" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9 L12 16 L16 19 L20 13 L25 9" fill="none"></path><circle cx="7" cy="8" r="2"></circle><circle cx="16" cy="20" r="2"></circle><circle cx="25" cy="9" r="2"></circle></g></symbol>
+  <symbol id="weapon_arclance" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 29 L16 4"></path><path d="M13 6 L19 9"></path><path d="M11 13 Q16 11 21 13 M11 19 Q16 17 21 19"></path></g></symbol>
+  <symbol id="weapon_tempest" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="9"></circle><circle cx="16" cy="16" r="4.5"></circle><path d="M16 6 L14 15 L18 16 L16 26"></path></g></symbol>
+  <symbol id="weapon_rimelance" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 29 L12 14 L16 3 L20 14 Z"></path><path d="M16 3 L16 29 M12 14 L20 14"></path></g></symbol>
+  <symbol id="weapon_frostfan" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 27 L16 21"></path><path d="M16 21 L8 8 M16 21 L16 4 M16 21 L24 8"></path><path d="M10 11 L13 12 M16 9 L16 12 M22 11 L19 12"></path></g></symbol>
+  <symbol id="pickup_scrap" viewBox="0 0 32 32"><rect x="9" y="9" width="14" height="14" rx="1.5" transform="rotate(45 16 16)" fill="#ffd166"></rect><rect x="13.5" y="13.5" width="5" height="5" transform="rotate(45 16 16)" fill="#0a1020"></rect></symbol>
+  <symbol id="pickup_cores" viewBox="0 0 32 32"><path d="M16 4 L25 13 L16 28 L7 13 Z" fill="#ff2da0" stroke="#ffb3e0" stroke-width="0.8"></path><path d="M7 13 L25 13 M16 4 L16 28" stroke="#ffb3e0" stroke-width="0.6" opacity="0.6"></path></symbol>
+  <symbol id="pickup_health" viewBox="0 0 32 32"><path d="M13 7 L19 7 L19 13 L25 13 L25 19 L19 19 L19 25 L13 25 L13 19 L7 19 L7 13 L13 13 Z" fill="#5ce28a"></path></symbol>
+  <symbol id="pickup_pu_charge" viewBox="0 0 32 32"><circle cx="16" cy="16" r="9" fill="none" stroke="#c77dff" stroke-width="2"></circle><path d="M17 8 L11 17 L15 17 L14 24 L21 15 L16 15 Z" fill="#c77dff"></path></symbol>
+  <symbol id="pickup_pu_frenzy" viewBox="0 0 32 32"><g fill="none" stroke="#ff7849" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 13 L16 9 L23 13 M9 18 L16 14 L23 18 M9 23 L16 19 L23 23"></path></g></symbol>
+  <symbol id="pickup_pu_orbital" viewBox="0 0 32 32"><ellipse cx="16" cy="16" rx="11" ry="5" fill="none" stroke="#7fd9ff" stroke-width="1.8" transform="rotate(-22 16 16)"></ellipse><circle cx="16" cy="16" r="3" fill="#7fd9ff"></circle><circle cx="25" cy="12" r="2.2" fill="#cdf6ff"></circle></symbol>
+  <symbol id="pickup_wreckage" viewBox="0 0 32 32"><path d="M8 14 L18 9 L24 14 L22 22 L12 23 Z" fill="#3a2418" stroke="#ffae6b" stroke-width="1.6" stroke-linejoin="round"></path><path d="M14 11 L15 21 M19 11 L21 19" stroke="#ffae6b" stroke-width="0.8" opacity="0.6"></path></symbol>
+  <symbol id="status_burning" viewBox="0 0 32 32"><g fill="none" stroke="#ff8c42" stroke-width="2" stroke-linejoin="round"><path d="M16 27 C9 23 11 14 16 5 C19 11 25 14 21 22 C20 25 18 27 16 27 Z"></path><path d="M16 27 C13 25 13 20 16 15 C18 19 19 22 16 27 Z" stroke-width="1.4"></path></g></symbol>
+  <symbol id="status_shocked" viewBox="0 0 32 32"><path d="M18 4 L9 17 L15 17 L13 28 L24 13 L17 13 Z" fill="#7aa2ff"></path></symbol>
+  <symbol id="status_marked" viewBox="0 0 32 32"><g fill="none" stroke="#ffd166" stroke-width="2" stroke-linecap="round"><path d="M6 11 L6 6 L11 6 M21 6 L26 6 L26 11 M6 21 L6 26 L11 26 M21 26 L26 26 L26 21"></path><circle cx="16" cy="16" r="2" fill="#ffd166" stroke="none"></circle></g></symbol>
+  <symbol id="status_fractured" viewBox="0 0 32 32"><g fill="none" stroke="#ff5470" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16 L16 5 M16 16 L26 11 M16 16 L24 25 M16 16 L9 27 M16 16 L5 15"></path></g></symbol>
+  <symbol id="status_chilled" viewBox="0 0 32 32"><g fill="none" stroke="#aef0ff" stroke-width="2" stroke-linecap="round"><path d="M16 4 L16 28 M6 10 L26 22 M26 10 L6 22"></path><path d="M16 9 L13 6 M16 9 L19 6 M16 23 L13 26 M16 23 L19 26 M10 13 L7 12 M22 13 L25 12 M10 19 L7 20 M22 19 L25 20"></path></g></symbol>
+  <symbol id="orbital_gun" viewBox="0 0 32 32"><path d="M16 6 L24 12 L21 24 L11 24 L8 12 Z" fill="#0c1b2e" stroke="#38e8ff" stroke-width="1.6"></path><circle cx="16" cy="16" r="2.4" fill="#bff4ff"></circle><path d="M21 24 L24 28 M11 24 L8 28" stroke="#38e8ff" stroke-width="1.4"></path></symbol>
+  <symbol id="orbital_repair" viewBox="0 0 32 32"><circle cx="16" cy="16" r="9" fill="#08160e" stroke="#5ce28a" stroke-width="1.6"></circle><path d="M16 11 L16 21 M11 16 L21 16" stroke="#5ce28a" stroke-width="2" stroke-linecap="round"></path></symbol>
+  <symbol id="orbital_shield" viewBox="0 0 32 32"><path d="M16 6 L25 12 L25 22 L16 27 L7 22 L7 12 Z" fill="none" stroke="#7fd9ff" stroke-width="1.6"></path><circle cx="16" cy="16" r="3" fill="#cdf6ff"></circle></symbol>
+  <symbol id="orbital_mine" viewBox="0 0 32 32"><circle cx="16" cy="16" r="9" fill="#190d08" stroke="#ff7849" stroke-width="1.6"></circle><path d="M16 16 L16 8 M16 16 L23 20" stroke="#ff7849" stroke-width="2" stroke-linecap="round"></path><circle cx="16" cy="16" r="1.6" fill="#ffcaa0"></circle></symbol>
+  <symbol id="crew_vesk" viewBox="0 0 72 88"><path d="M22 88 L22 64 Q22 40 36 38 Q50 40 50 64 L50 88 Z" fill="#13243a" stroke="#38e8ff" stroke-width="1.4"></path><path d="M24 30 Q24 16 36 16 Q48 16 48 30 L48 44 Q48 54 36 56 Q24 54 24 44 Z" fill="#0c1b2e" stroke="#38e8ff" stroke-width="1.6"></path><path d="M28 34 L44 34 L42 41 L30 41 Z" fill="#38e8ff" opacity="0.85" style="filter:drop-shadow(0 0 4px #38e8ff);"></path><path d="M30 30 L30 22 M42 30 L42 22" stroke="#38e8ff" stroke-width="1"></path></symbol>
+  <symbol id="crew_marlowe" viewBox="0 0 72 88"><path d="M22 88 L22 64 Q22 40 36 38 Q50 40 50 64 L50 88 Z" fill="#11281a" stroke="#5ce28a" stroke-width="1.4"></path><path d="M24 30 Q24 16 36 16 Q48 16 48 30 L48 44 Q48 54 36 56 Q24 54 24 44 Z" fill="#08160e" stroke="#5ce28a" stroke-width="1.6"></path><circle cx="36" cy="36" r="6" fill="none" stroke="#5ce28a" stroke-width="1.6"></circle><circle cx="36" cy="36" r="2" fill="#5ce28a" style="filter:drop-shadow(0 0 4px #5ce28a);"></circle><path d="M48 32 L54 30 M24 32 L18 30" stroke="#5ce28a" stroke-width="1"></path></symbol>
+  <symbol id="crew_cassia" viewBox="0 0 72 88"><path d="M22 88 L22 64 Q22 40 36 38 Q50 40 50 64 L50 88 Z" fill="#0e2433" stroke="#7fd9ff" stroke-width="1.4"></path><path d="M24 28 Q24 15 36 15 Q48 15 48 28 L48 42 Q48 53 36 56 Q24 53 24 42 Z" fill="#0a1622" stroke="#7fd9ff" stroke-width="1.6"></path><path d="M26 34 Q36 30 46 34 L44 40 Q36 37 28 40 Z" fill="#7fd9ff" opacity="0.85" style="filter:drop-shadow(0 0 4px #7fd9ff);"></path><path d="M36 15 L36 9 L40 11" stroke="#7fd9ff" stroke-width="1"></path></symbol>
+  <symbol id="crew_dune" viewBox="0 0 72 88"><path d="M22 88 L22 64 Q22 40 36 38 Q50 40 50 64 L50 88 Z" fill="#2a2410" stroke="#ffd166" stroke-width="1.4"></path><path d="M24 30 Q24 16 36 16 Q48 16 48 30 L48 44 Q48 54 36 56 Q24 54 24 44 Z" fill="#1a1608" stroke="#ffd166" stroke-width="1.6"></path><rect x="29" y="33" width="14" height="6" rx="3" fill="#ffd166" opacity="0.85" style="filter:drop-shadow(0 0 4px #ffd166);"></rect><path d="M27 28 L45 28" stroke="#ffd166" stroke-width="1"></path></symbol>
+  <symbol id="crew_ryker" viewBox="0 0 72 88"><path d="M22 88 L22 64 Q22 40 36 38 Q50 40 50 64 L50 88 Z" fill="#2a1022" stroke="#ff2da0" stroke-width="1.4"></path><path d="M26 30 Q26 15 36 15 Q46 15 46 30 L46 44 Q46 53 36 56 Q26 53 26 44 Z" fill="#1c0a18" stroke="#ff2da0" stroke-width="1.6"></path><path d="M28 36 L33 33 L33 39 Z M44 36 L39 33 L39 39 Z" fill="#ff2da0" opacity="0.9" style="filter:drop-shadow(0 0 4px #ff2da0);"></path><path d="M36 56 L36 62" stroke="#ff2da0" stroke-width="1.2"></path></symbol>
+</svg>
   <canvas id="game"></canvas>
   <aside class="panel r">
     <div class="phdr m"><span class="dot"></span>TELEMETRY</div>
@@ -171,7 +289,7 @@ const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
   enemyBullet:'#ff4d6d', scrap:'#ffd166', text:'#e8eefc', accent:'#38e8ff', dim:'#5a6a8a',
   charge:'#c77dff', health:'#5ce28a', heat:'#ff7849',
-  burning:'#ff8c42', shocked:'#7aa2ff', marked:'#ffd166', fractured:'#ff5470', chilled:'#aef0ff',
+  burning:'#ff8c42', shocked:'#7aa2ff', marked:'#ffd166', fractured:'#ff5470', chilled:'#aef0ff', shield:'#7fd9ff',
 };
 
 /* ---------- audio (lazy WebAudio) ---------------------------------- */
@@ -1301,8 +1419,22 @@ function gainXp(n){
 /* =====================================================================
    RENDER
    ===================================================================== */
+const SPRITE_CACHE={};
+function initSprites(){
+  const sheet=document.getElementById('sr-sprites');
+  if(!sheet) return;
+  sheet.querySelectorAll('symbol').forEach(sym=>{
+    const id=sym.id;
+    const vb=sym.getAttribute('viewBox')||'0 0 64 64';
+    const parts=vb.split(' ');
+    const w=parts[2]||64, h=parts[3]||64;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}">${sym.innerHTML}</svg>`;
+    const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    SPRITE_CACHE[id]=img;
+  });
+}
 function initStars(){ stars=[]; for(let i=0;i<90;i++){ const l=Math.random(); stars.push({x:Math.random()*W,y:Math.random()*H,s:0.5+l*1.8,v:30+l*90,a:0.2+l*0.6}); } }
-initStars(); setBgTheme(0);   // ◇ fix: starfield exists before any wave (was the v1 crash) ◇
+initStars(); initSprites(); setBgTheme(0);   // ◇ fix: starfield exists before any wave (was the v1 crash) ◇
 
 function draw(){
   uiButtons=[];
@@ -1400,6 +1532,12 @@ function drawPlayer(){
 }
 function drawHullSprite(hull, brace, oc){
   brace=brace||0; oc=oc||0;
+  const spr=SPRITE_CACHE['ship_'+hull];
+  if(spr && spr.complete && spr.naturalWidth){
+    noGlow(); ctx.drawImage(spr,-28,-28,56,56);
+    if(brace>0){ ctx.strokeStyle='#7fd9ff'; ctx.globalAlpha=0.6+0.2*Math.sin(time*8); glow('#7fd9ff',8); ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(0,0,24,0,6.3); ctx.stroke(); noGlow(); ctx.globalAlpha=1; }
+    return;
+  }
   if(hull==='wake'){
     for(const fx of [-4,4]){ ctx.fillStyle=`rgba(255,174,107,${0.5+Math.random()*0.3})`; ctx.beginPath(); ctx.moveTo(fx-2,8); ctx.lineTo(fx,16+Math.random()*6); ctx.lineTo(fx+2,8); ctx.fill(); }
     ctx.fillStyle='#9fe8ff'; ctx.strokeStyle='#ffae6b'; ctx.lineWidth=1.5;
@@ -1458,20 +1596,26 @@ function drawEnemy(e){
   else if(chilled&&e.hitFlash<=0) c=blend(e.col,COL.chilled,0.45);
   ctx.fillStyle=c; ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1.2;
   if(!burning&&!shocked&&!chilled){ ctx.shadowColor=e.col; ctx.shadowBlur=5; }
-  const r=e.r; ctx.beginPath();
-  if(e.type==='tank'||e.type==='brute'){ ctx.rect(-r,-r*0.8,r*2,r*1.6); }
-  else if(e.type==='carrier'){ ctx.moveTo(0,r); ctx.lineTo(r,r*0.25); ctx.lineTo(r*0.7,-r*0.7); ctx.lineTo(-r*0.7,-r*0.7); ctx.lineTo(-r,r*0.25); ctx.closePath(); }
-  else if(e.type==='gunner'){ ctx.moveTo(0,r); ctx.lineTo(r*0.5,r*0.1); ctx.lineTo(r,r*0.4); ctx.lineTo(r*0.7,-r*0.6); ctx.lineTo(-r*0.7,-r*0.6); ctx.lineTo(-r,r*0.4); ctx.lineTo(-r*0.5,r*0.1); ctx.closePath(); }
-  else if(e.type==='weaver'){ ctx.moveTo(0,r); ctx.lineTo(r,r*0.05); ctx.lineTo(r*0.45,-r*0.7); ctx.lineTo(-r*0.45,-r*0.7); ctx.lineTo(-r,r*0.05); ctx.closePath(); }
-  else if(e.type==='leech'){ ctx.moveTo(0,r); ctx.lineTo(r*0.5,-r*0.2); ctx.lineTo(0,-r); ctx.lineTo(-r*0.5,-r*0.2); ctx.closePath(); }
-  else if(e.type==='assassin'){ ctx.moveTo(0,r); ctx.lineTo(r*0.8,-r*0.1); ctx.lineTo(0,-r*0.5); ctx.lineTo(-r*0.8,-r*0.1); ctx.closePath(); }
-  else if(e.type==='artillery'){ ctx.moveTo(-r,r*0.5); ctx.lineTo(r,r*0.5); ctx.lineTo(r*0.6,-r*0.6); ctx.lineTo(-r*0.6,-r*0.6); ctx.closePath(); }
-  else if(e.type==='mimic'){ ctx.rect(-r*0.8,-r*0.8,r*1.6,r*1.6); }
-  else if(e.type==='shielddrone'){ for(let k=0;k<6;k++){ const a=k/6*6.283-1.57, px=Math.cos(a)*r, py=Math.sin(a)*r; if(k===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); }
-  else if(e.type==='repair'){ const w=r*0.34; ctx.rect(-w,-r,w*2,r*2); ctx.rect(-r,-w,r*2,w*2); }
-  else { ctx.moveTo(0,r); ctx.lineTo(r,-r*0.7); ctx.lineTo(-r,-r*0.7); ctx.closePath(); }
-  ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
-  if(e.type!=='tank'&&e.type!=='brute'){ ctx.fillStyle='rgba(8,12,26,0.85)'; ctx.beginPath(); ctx.arc(0,-r*0.05,r*0.24,0,6.3); ctx.fill(); }
+  const r=e.r; const eSpr=SPRITE_CACHE['enemy_'+e.type];
+  if(eSpr && eSpr.complete && eSpr.naturalWidth){
+    const sz=r*2.4; ctx.shadowBlur=0; ctx.drawImage(eSpr,-sz/2,-sz/2,sz,sz);
+    if(e.hitFlash>0){ ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,r,0,6.3); ctx.fill(); ctx.restore(); }
+  } else {
+    ctx.beginPath();
+    if(e.type==='tank'||e.type==='brute'){ ctx.rect(-r,-r*0.8,r*2,r*1.6); }
+    else if(e.type==='carrier'){ ctx.moveTo(0,r); ctx.lineTo(r,r*0.25); ctx.lineTo(r*0.7,-r*0.7); ctx.lineTo(-r*0.7,-r*0.7); ctx.lineTo(-r,r*0.25); ctx.closePath(); }
+    else if(e.type==='gunner'){ ctx.moveTo(0,r); ctx.lineTo(r*0.5,r*0.1); ctx.lineTo(r,r*0.4); ctx.lineTo(r*0.7,-r*0.6); ctx.lineTo(-r*0.7,-r*0.6); ctx.lineTo(-r,r*0.4); ctx.lineTo(-r*0.5,r*0.1); ctx.closePath(); }
+    else if(e.type==='weaver'){ ctx.moveTo(0,r); ctx.lineTo(r,r*0.05); ctx.lineTo(r*0.45,-r*0.7); ctx.lineTo(-r*0.45,-r*0.7); ctx.lineTo(-r,r*0.05); ctx.closePath(); }
+    else if(e.type==='leech'){ ctx.moveTo(0,r); ctx.lineTo(r*0.5,-r*0.2); ctx.lineTo(0,-r); ctx.lineTo(-r*0.5,-r*0.2); ctx.closePath(); }
+    else if(e.type==='assassin'){ ctx.moveTo(0,r); ctx.lineTo(r*0.8,-r*0.1); ctx.lineTo(0,-r*0.5); ctx.lineTo(-r*0.8,-r*0.1); ctx.closePath(); }
+    else if(e.type==='artillery'){ ctx.moveTo(-r,r*0.5); ctx.lineTo(r,r*0.5); ctx.lineTo(r*0.6,-r*0.6); ctx.lineTo(-r*0.6,-r*0.6); ctx.closePath(); }
+    else if(e.type==='mimic'){ ctx.rect(-r*0.8,-r*0.8,r*1.6,r*1.6); }
+    else if(e.type==='shielddrone'){ for(let k=0;k<6;k++){ const a=k/6*6.283-1.57, px=Math.cos(a)*r, py=Math.sin(a)*r; if(k===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); }
+    else if(e.type==='repair'){ const w=r*0.34; ctx.rect(-w,-r,w*2,r*2); ctx.rect(-r,-w,r*2,w*2); }
+    else { ctx.moveTo(0,r); ctx.lineTo(r,-r*0.7); ctx.lineTo(-r,-r*0.7); ctx.closePath(); }
+    ctx.fill(); ctx.stroke(); ctx.shadowBlur=0;
+    if(e.type!=='tank'&&e.type!=='brute'){ ctx.fillStyle='rgba(8,12,26,0.85)'; ctx.beginPath(); ctx.arc(0,-r*0.05,r*0.24,0,6.3); ctx.fill(); }
+  }
   if(fractured){ ctx.strokeStyle=COL.fractured; ctx.lineWidth=1.2; ctx.globalAlpha=0.85; const st=e.status.fractured.stacks; for(let i=0;i<Math.min(4,st);i++){ const a=i*1.9+0.4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*e.r*0.9,Math.sin(a)*e.r*0.9); ctx.stroke(); } ctx.globalAlpha=1; }
   if(burning){ for(let i=0;i<3;i++){ ctx.fillStyle=`rgba(255,${(140+Math.random()*70)|0},66,0.7)`; const fx=(Math.random()-0.5)*e.r*1.2; ctx.beginPath(); ctx.moveTo(fx-2,-e.r*0.6); ctx.lineTo(fx,-e.r*0.6-6-Math.random()*6); ctx.lineTo(fx+2,-e.r*0.6); ctx.fill(); } }
   if(chilled){ const st=e.status.chilled.stacks; ctx.strokeStyle=COL.chilled; ctx.lineWidth=1.2; ctx.globalAlpha=0.8; for(let i=0;i<Math.min(5,st);i++){ const a=i*1.4+time*0.3, rr=e.r*(0.5+0.5*Math.random()); const sx=Math.cos(a)*rr, sy=Math.sin(a)*rr; ctx.beginPath(); ctx.moveTo(sx-3,sy); ctx.lineTo(sx+3,sy); ctx.moveTo(sx,sy-3); ctx.lineTo(sx,sy+3); ctx.stroke(); } ctx.globalAlpha=1; }
@@ -1497,18 +1641,26 @@ function drawBoss(e){
   glow(e.col,18);
   ctx.fillStyle=e.hitFlash>0?'#fff':e.col; ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=2;
   const shp=e.def.shape||'warden';
-  ctx.beginPath();
-  if(shp==='dread'){ ctx.moveTo(0,46); ctx.lineTo(30,20); ctx.lineTo(52,-6); ctx.lineTo(34,-30); ctx.lineTo(12,-22); ctx.lineTo(0,-34); ctx.lineTo(-12,-22); ctx.lineTo(-34,-30); ctx.lineTo(-52,-6); ctx.lineTo(-30,20); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  else if(shp==='sun'){ const n=10; for(let i=0;i<n*2;i++){ const a=i/(n*2)*6.283-1.571, rr=(i%2?22:47); const px=Math.cos(a)*rr, py=Math.sin(a)*rr; i?ctx.lineTo(px,py):ctx.moveTo(px,py);} ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  else if(shp==='node'){ ctx.moveTo(0,-46); ctx.lineTo(32,0); ctx.lineTo(0,46); ctx.lineTo(-32,0); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.lineWidth=1.5; for(let k=0;k<4;k++){ const a=e.spin*1.2+k*1.571, ox=Math.cos(a)*40, oy=Math.sin(a)*40; ctx.beginPath(); ctx.rect(ox-4,oy-4,8,8); ctx.fill(); ctx.stroke(); } }
-  else if(shp==='choir'){ for(let k=0;k<5;k++){ const a=k/5*6.283+e.spin*0.3, cx=Math.cos(a)*22, cy=Math.sin(a)*22; ctx.moveTo(cx+17,cy); ctx.arc(cx,cy,17,0,6.3);} ctx.fill(); ctx.stroke(); }
-  else if(shp==='hive'){ ctx.moveTo(-50,10); ctx.quadraticCurveTo(0,-46,50,10); ctx.quadraticCurveTo(0,38,-50,10); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.lineWidth=1; for(let q=-1;q<=1;q++){ const hx=q*22; ctx.beginPath(); for(let s=0;s<6;s++){ const a=s/6*6.283, px=hx+Math.cos(a)*8, py=2+Math.sin(a)*8; s?ctx.lineTo(px,py):ctx.moveTo(px,py);} ctx.closePath(); ctx.stroke(); } }
-  else { ctx.moveTo(0,40); ctx.lineTo(40,12); ctx.lineTo(46,-18); ctx.lineTo(20,-34); ctx.lineTo(-20,-34); ctx.lineTo(-46,-18); ctx.lineTo(-40,12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-  noGlow();
-  ctx.fillStyle='rgba(10,15,30,0.85)'; ctx.beginPath(); ctx.arc(0,-6,13,0,6.3); ctx.fill();
-  ctx.fillStyle=e.col; ctx.beginPath(); ctx.arc(0,-6,6+2*Math.sin(time*4),0,6.3); ctx.fill();
+  const bSpr=SPRITE_CACHE['boss_'+shp];
+  if(bSpr && bSpr.complete && bSpr.naturalWidth){
+    ctx.drawImage(bSpr,-60,-60,120,120);
+    if(e.hitFlash>0){ ctx.save(); ctx.globalAlpha=0.45; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,-6,52,0,6.3); ctx.fill(); ctx.restore(); }
+    noGlow();
+    ctx.globalAlpha=0.4*Math.abs(Math.sin(time*4)); ctx.fillStyle=e.col; ctx.beginPath(); ctx.arc(0,-6,8,0,6.3); ctx.fill(); ctx.globalAlpha=1;
+  } else {
+    ctx.beginPath();
+    if(shp==='dread'){ ctx.moveTo(0,46); ctx.lineTo(30,20); ctx.lineTo(52,-6); ctx.lineTo(34,-30); ctx.lineTo(12,-22); ctx.lineTo(0,-34); ctx.lineTo(-12,-22); ctx.lineTo(-34,-30); ctx.lineTo(-52,-6); ctx.lineTo(-30,20); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else if(shp==='sun'){ const n=10; for(let i=0;i<n*2;i++){ const a=i/(n*2)*6.283-1.571, rr=(i%2?22:47); const px=Math.cos(a)*rr, py=Math.sin(a)*rr; i?ctx.lineTo(px,py):ctx.moveTo(px,py);} ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else if(shp==='node'){ ctx.moveTo(0,-46); ctx.lineTo(32,0); ctx.lineTo(0,46); ctx.lineTo(-32,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineWidth=1.5; for(let k=0;k<4;k++){ const a=e.spin*1.2+k*1.571, ox=Math.cos(a)*40, oy=Math.sin(a)*40; ctx.beginPath(); ctx.rect(ox-4,oy-4,8,8); ctx.fill(); ctx.stroke(); } }
+    else if(shp==='choir'){ for(let k=0;k<5;k++){ const a=k/5*6.283+e.spin*0.3, cx=Math.cos(a)*22, cy=Math.sin(a)*22; ctx.moveTo(cx+17,cy); ctx.arc(cx,cy,17,0,6.3);} ctx.fill(); ctx.stroke(); }
+    else if(shp==='hive'){ ctx.moveTo(-50,10); ctx.quadraticCurveTo(0,-46,50,10); ctx.quadraticCurveTo(0,38,-50,10); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineWidth=1; for(let q=-1;q<=1;q++){ const hx=q*22; ctx.beginPath(); for(let s=0;s<6;s++){ const a=s/6*6.283, px=hx+Math.cos(a)*8, py=2+Math.sin(a)*8; s?ctx.lineTo(px,py):ctx.moveTo(px,py);} ctx.closePath(); ctx.stroke(); } }
+    else { ctx.moveTo(0,40); ctx.lineTo(40,12); ctx.lineTo(46,-18); ctx.lineTo(20,-34); ctx.lineTo(-20,-34); ctx.lineTo(-46,-18); ctx.lineTo(-40,12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    noGlow();
+    ctx.fillStyle='rgba(10,15,30,0.85)'; ctx.beginPath(); ctx.arc(0,-6,13,0,6.3); ctx.fill();
+    ctx.fillStyle=e.col; ctx.beginPath(); ctx.arc(0,-6,6+2*Math.sin(time*4),0,6.3); ctx.fill();
+  }
   ctx.restore();
   reticle(e.x,e.y,e.r+14,e.col,time*0.6);            // target lock
   // name + segmented health readout across the top
@@ -1519,6 +1671,8 @@ function drawBoss(e){
 function drawPickup(p){ ctx.save(); ctx.translate(p.x,p.y);
   const col=p.kind==='scrap'?COL.scrap:p.kind==='health'?COL.health:p.kind==='pu_charge'?COL.charge:p.kind==='wreckage'?'#ffae6b':p.kind==='pu_orbital'?'#7fd9ff':COL.heat;
   glow(col,8);
+  const pSpr=SPRITE_CACHE['pickup_'+p.kind];
+  if(pSpr && pSpr.complete && pSpr.naturalWidth){ ctx.drawImage(pSpr,-11,-11,22,22); ctx.restore(); return; }
   if(p.kind==='scrap'){ ctx.rotate(p.spin); ctx.fillStyle=COL.scrap; ctx.fillRect(-5,-5,10,10); ctx.fillStyle='#0a1020'; ctx.fillRect(-2,-2,4,4); }
   else if(p.kind==='health'){ ctx.fillStyle=COL.health; ctx.fillRect(-2.2,-7,4.4,14); ctx.fillRect(-7,-2.2,14,4.4); }
   else if(p.kind==='wreckage'){ ctx.rotate(p.spin); ctx.fillStyle='#b06a3a'; ctx.strokeStyle='#ffae6b'; ctx.lineWidth=1; ctx.fillRect(-5,-4,10,8); ctx.strokeRect(-5,-4,10,8); }

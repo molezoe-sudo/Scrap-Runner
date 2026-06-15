@@ -165,7 +165,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.0';
+const VERSION = '0.9.1';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -346,7 +346,7 @@ const PRIMARIES = {
                blurb:'A close-range cryo shotgun — a freezing cone that Chills everything it touches.' },
   missilepod:{ name:'Missile Pod',   kind:'missile', dmg:10, interval:0.5,  count:2, speed:540, r:5, blast:50, blastDmg:14, type:'thermal', source:'base',
                blurb:'Twin incendiary rockets — burst on impact for splash damage and set foes alight.' },
-  mortar:    { name:'Mortar Lobber', kind:'bomb',    dmg:14, interval:0.95, count:1, speed:300, r:7, blast:96, blastDmg:42, type:'thermal', source:'base',
+  mortar:    { name:'Mortar Lobber', kind:'bomb',    dmg:14, interval:0.95, count:1, speed:300, r:7, blast:76, blastDmg:30, type:'thermal', source:'base',
                blurb:'A slow, heavy firebomb with a wide, devastating blast that leaves enemies Burning.' },
   seekerpod: { name:'Hunter Seekers',kind:'homing',  dmg:8,  interval:0.46, count:2, speed:460, r:5, blast:40, blastDmg:11, type:'thermal', source:'base',
                blurb:'Smart incendiary missiles that bank toward the nearest threat, then detonate in flame.' },
@@ -653,8 +653,8 @@ const RELICS = [
   { id:'conduction', name:'Conduction Coil', tag:'Shocked', col:'#7aa2ff', kind:'modifier',
     desc:'Shocked foes take +28% damage from all sources.' },
   { id:'embertally', name:'Ember Tally', tag:'Scaling', col:'#ff5a2c', kind:'scaling',
-    desc:'+2% thermal damage for every fire reaction (Immolate / Meltdown / Thermal Shock) you trigger this run. Resets each run.' },
-  { id:'glasscannon', name:'Glass Reactor', tag:'Pact', col:'#ff2da0', kind:'pact',
+    desc:'+2% thermal damage for every fire reaction (Immolate / Meltdown / Thermal Shock) you trigger this run. Caps at 30 stacks (+60%). Resets each run.' },
+  { id:'glassreactor', name:'Glass Reactor', tag:'Pact', col:'#ff2da0', kind:'pact',
     desc:'+60% damage, but −40% maximum integrity. Live fast.' },
   { id:'vampcore', name:'Carrion Core', tag:'Sustain', col:'#5ce28a', kind:'sustain',
     desc:'Every kill restores 2% of your maximum integrity.' },
@@ -703,7 +703,7 @@ function recompute(){
   stats.maxHp      *= (1 + crewTier('hull')*0.04);      // Bulwark
   stats.chargeMult *= (1 + crewTier('reactor')*0.08);   // Overclock
   stats.maxHp=Math.max(20,Math.round(stats.maxHp));
-  if(relicIs('glasscannon')){ stats.damageMult*=1.6; stats.maxHp=Math.max(20,Math.round(stats.maxHp*0.6)); }
+  if(relicIs('glassreactor')){ stats.damageMult*=1.6; stats.maxHp=Math.max(20,Math.round(stats.maxHp*0.6)); }
   if(stats.speed<0.4)stats.speed=0.4; if(stats.fireMult<0.25)stats.fireMult=0.25; if(stats.damageMult<0.2)stats.damageMult=0.2;
   stats.hitbox*=stats.hitboxMult;
   if(player){ player.maxHpCache=stats.maxHp; player.hp=Math.min(player.hp, stats.maxHp); }
@@ -770,7 +770,7 @@ function damageEnemy(e, amount, type, applyTags=true, fromPrimary=false, continu
   if(relic){
     if(relic.id==='brittlecold' && hasStatus(e,'chilled')) mult+=e.status.chilled.stacks*0.07;
     if(relic.id==='conduction'  && hasStatus(e,'shocked'))  mult+=0.28;
-    if(relic.id==='embertally'  && (type==='thermal'||type==='explosive')) mult+=fireReactionCount()*0.02;
+    if(relic.id==='embertally'  && (type==='thermal'||type==='explosive')) mult+=Math.min(fireReactionCount(),30)*0.02;
     if(relic.id==='quarrybrand' && hasStatus(e,'marked'))    mult+=0.15;
     if(relic.id==='faultline'   && hasStatus(e,'fractured')) mult+=e.status.fractured.stacks*0.06;
     if(relic.id==='siege')                                   mult*=(player&&player.moving)?0.9:1.25;
@@ -813,7 +813,7 @@ function killEnemy(e){
   if(relicIs('ashenheart') && c.burning){ const pv=dmgSrc; dmgSrc='dot'; for(const o of enemies){ if(o!==e&&!o.dead&&dist2(o,e)<80*80) applyStatus(o,'burning',2,3); } dmgSrc=pv; burst(e.x,e.y,COL.burning,16,200); }
   if(relicIs('vampcore') && player && player.hp>0){ player.hp=Math.min(stats.maxHp, player.hp+stats.maxHp*0.02); }
   if(relicIs('quarrybrand') && c.marked){ let best=null,bd=1e9; for(const o of enemies){ if(o!==e&&!o.dead&&!hasStatus(o,'marked')){ const d=dist2(o,e); if(d<bd){bd=d;best=o;} } } if(best){ applyStatus(best,'marked',0,5); burst(best.x,best.y,COL.marked,8,160); } }
-  if(relicIs('faultline') && hasStatus(e,'fractured') && killDepth<3){ killDepth++; const st=e.status.fractured.stacks, pv=dmgSrc; dmgSrc='reaction'; for(const o of [...enemies]){ if(o!==e&&!o.dead&&dist2(o,e)<70*70) damageEnemy(o,18+st*8,'kinetic'); } dmgSrc=pv; burst(e.x,e.y,'#ff5470',18,220); killDepth--; }
+  if(relicIs('faultline') && hasStatus(e,'fractured') && killDepth<3){ killDepth++; const st=e.status.fractured.stacks, pv=dmgSrc; dmgSrc='reaction'; for(const o of [...enemies]){ if(o!==e&&!o.dead&&dist2(o,e)<55*55) damageEnemy(o,14+st*6,'kinetic'); } dmgSrc=pv; burst(e.x,e.y,'#ff5470',18,220); killDepth--; }
   if(killDepth<4){ killDepth++; fire('onKill',c); killDepth--; }   // chain-depth guard (vocab §7.3)
   const dropBoost=e.elite?1:0;
   if(Math.random()<(0.3+dropBoost*0.6)*(1+(META.upg.elite||0)*0.10) || e.boss) maybeDrop(e.x,e.y);

@@ -165,7 +165,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.2';
+const VERSION = '0.9.3';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -369,7 +369,7 @@ const SPECIALS = {
   stasis:  { name:'Stasis Field', chargeMax:115, source:'base', blurb:'Time-dilation pulse — freezes every enemy in place (bosses briefly).',
              fire(){ for(const e of enemies){ e.frozen=Math.max(e.frozen||0, e.boss?0.9:3.0); } burst(player.x,player.y,'#aef0ff',44,320); shake=8; } },
   summon:  { name:'Wing Support', chargeMax:120, source:'base', blurb:'Scrambles a wing of fighters that strafe alongside you, then peel off.',
-             fire(){ for(let k=0;k<4;k++){ allies.push({ tx:(k-1.5)*48, ty:-30-(k%2)*22, x:player.x+(k-1.5)*40, y:H+30, life:5.0, fire:Math.random()*0.25 }); } Audio2.charged(); } },
+             fire(){ for(let k=0;k<4;k++){ allies.push({ tx:(k-1.5)*48, ty:-30-(k%2)*22, x:player.x+(k-1.5)*40, y:H+30, life:4.0, fire:Math.random()*0.25 }); } Audio2.charged(); } },
 };
 
 // --- hulls ---
@@ -743,7 +743,7 @@ const REACTIONS = [
   { a:'chilled', b:'burning',   name:'THERMAL SHOCK', col:'#ffd1a8', desc:'Chilled + Burning: a violent temperature swing cracks the hull — heavy burst scaling with Chilled stacks.', do(e){ const m=reactMult(); const st=(e.status.chilled?e.status.chilled.stacks:1); damageEnemy(e,(40+st*15)*m,'kinetic'); for(const o of enemies){ if(o!==e&&dist2(o,e)<70*70) damageEnemy(o,18*m,'kinetic'); } } },
   { a:'chilled', b:'shocked',   name:'SUPERCONDUCT', col:'#9fd0ff', desc:'Chilled + Shocked: cold turns it conductive — shock burst that Marks the target and nearby foes (raises damage taken).', do(e){ const m=reactMult(); damageEnemy(e,42*m,'shock'); applyStatus(e,'marked',0,5); for(const o of enemies){ if(o!==e&&dist2(o,e)<110*110){ applyStatus(o,'marked',0,4); damageEnemy(o,16*m,'shock'); } } } },
   { a:'chilled', b:'fractured', name:'BRITTLE',  col:'#cfefff', desc:'Chilled + Fractured: frozen and cracked — a massive kinetic shatter scaling with both Chilled and Fractured stacks.', do(e){ const m=reactMult(); const cs=(e.status.chilled?e.status.chilled.stacks:1), fs=(e.status.fractured?e.status.fractured.stacks:1); damageEnemy(e,(30+(cs+fs)*16)*m,'kinetic'); for(const o of enemies){ if(o!==e&&dist2(o,e)<60*60) damageEnemy(o,20*m,'kinetic'); } } },
-  { a:'chilled', b:'marked',    name:'DEEP FREEZE', col:'#aef0ff', desc:'Chilled + Marked: a hard freeze — roots the target solid for a moment and leaves it Fractured.', do(e){ const m=reactMult(); e.frozen=Math.max(e.frozen||0,1.6); applyStatus(e,'fractured',2,6); damageEnemy(e,46*m,'kinetic'); burst(e.x,e.y,'#aef0ff',20,200); } },
+  { a:'chilled', b:'marked',    name:'DEEP FREEZE', col:'#aef0ff', desc:'Chilled + Marked: a hard freeze — roots the target solid for a moment and leaves it Fractured.', do(e){ const m=reactMult(); e.frozen=Math.max(e.frozen||0, e.boss?1.0:1.6); applyStatus(e,'fractured',2,6); damageEnemy(e,46*m,'kinetic'); burst(e.x,e.y,'#aef0ff',20,200); } },
 ];
 let reacting=false;
 function checkReaction(e){
@@ -941,7 +941,7 @@ function tryAbility(){
     fire('onDash',{from:{x:player.x,y:player.y}});
   } else if(act==='brace'){ player.brace=2.2; player.inv=Math.max(player.inv,0.2); Audio2.charged(); }
   else if(act==='overdrive'){ player.overdrive=4; Audio2.charged(); }
-  else if(act==='vent'){ const dmg=player.oc*16; const prev=dmgSrc; dmgSrc='ability'; for(const e of [...enemies]){ if(dist2(e,player)<160*160){ damageEnemy(e,dmg,'explosive'); applyStatus(e,'fractured',2,5); } } dmgSrc=prev; burst(player.x,player.y,COL.heat,42,320); shake=14; player.oc=0; Audio2.explode(); }
+  else if(act==='vent'){ const dmg=player.oc*16; const prev=dmgSrc; dmgSrc='ability'; for(const e of [...enemies]){ if(dist2(e,player)<160*160){ damageEnemy(e,dmg,'explosive'); applyStatus(e,'fractured',1,5); } } dmgSrc=prev; burst(player.x,player.y,COL.heat,42,320); shake=14; player.oc=0; Audio2.explode(); }
 }
 
 /* =====================================================================
@@ -1073,7 +1073,7 @@ function firePrimary(dt){
   }
 }
 function nearest(o,pool){ let best=null,bd=1e9; for(const e of pool){const d=dist2(o,e);if(d<bd){bd=d;best=e;}} return best; }
-function updateAllies(dt){ const dmg=8*stats.damageMult;
+function updateAllies(dt){ const dmg=6*stats.damageMult;
   for(let i=allies.length-1;i>=0;i--){ const a=allies[i]; a.life-=dt;
     const leaving=a.life<0.8, tx=player.x+a.tx, ty=leaving?-50:player.y+a.ty;
     a.x+=(tx-a.x)*Math.min(1,dt*6); a.y+=(ty-a.y)*Math.min(1,dt*7);
@@ -1082,7 +1082,7 @@ function updateAllies(dt){ const dmg=8*stats.damageMult;
   }
 }
 const ORBITALS={ guard:{col:'#7fd9ff',name:'Aegis Orbital'}, gun:{col:'#ffd166',name:'Gun Orbital'}, side:{col:'#ff5fa0',name:'Flak Orbital'} };
-function addOrbital(){ if(!player.orbitals)player.orbitals=[]; const kinds=['guard','gun','side'], t=kinds[Math.floor(Math.random()*kinds.length)];
+function addOrbital(){ if(!player.orbitals)player.orbitals=[]; if(player.orbitals.length>=3) return; const kinds=['guard','gun','side'], t=kinds[Math.floor(Math.random()*kinds.length)];
   player.orbitals.push({ type:t, ang:player.orbitals.length*2.1, life:60, hp:t==='guard'?5:1, fire:0, x:player.x, y:player.y }); }
 function updateOrbitals(dt){ if(!player.orbitals)return; const dmg=10*stats.damageMult;
   for(let i=player.orbitals.length-1;i>=0;i--){ const o=player.orbitals[i]; o.life-=dt; o.ang+=dt*1.6;

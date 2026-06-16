@@ -2,7 +2,7 @@
 
 **Doc version:** 1.0
 **Game version at handoff:** v0.9.0 (content-complete vertical slice)
-**Source file:** `scrap-runner-v0.9.0.html` (a single self-contained HTML file)
+**Source file:** `index.html` (a single self-contained HTML file, deployed as-is to Vercel)
 **Audience:** Claude Code (and any human reading along)
 
 ---
@@ -15,12 +15,12 @@ This is the master reference for the Scrap Runner codebase. It describes **what 
 
 1. **Verify syntax after every edit.** Extract the script and run Node's checker:
    ```bash
-   node -e "const fs=require('fs');let h=fs.readFileSync('scrap-runner-v0.9.0.html','utf8');const m=h.match(/<script>([\s\S]*?)<\/script>/);fs.writeFileSync('/tmp/slice.js',m[1]);" && node --check /tmp/slice.js
+   node -e "const fs=require('fs');let h=fs.readFileSync('index.html','utf8');const m=h.match(/<script>([\s\S]*?)<\/script>/);fs.writeFileSync('/tmp/slice.js',m[1]);" && node --check /tmp/slice.js
    ```
    `node --check` only proves the JS *parses* — it cannot run the canvas or judge visuals. There is no automated way to see or play the game; a running browser (or a headless screenshot) is the only visual verification.
 2. **British English everywhere** (colour, armour, maths, flavour). Metric units.
 3. **The data-driven philosophy is sacred** (see §3). New content is *data + rules*, never hardcoded into game flow. No piece references another by name.
-4. **Bump the version** on meaningful changes and carry it in the filename and the `VERSION` constant. Convention: `MAJOR.MINOR.PATCH`; **1.0.0 = first packaged (Tauri/Electron) release**.
+4. **Bump the version** on meaningful changes in the `VERSION` constant. The filename stays `index.html` always — it's deployed live to Vercel and Nexus links straight to it, so the path must never change. Convention: `MAJOR.MINOR.PATCH`; **1.0.0 = first packaged (Tauri/Electron) release**.
 5. **Balance values are first-draft placeholders.** Almost every number (damage, drop rates, costs, durations, trait magnitudes) is untuned. See §13.
 
 ---

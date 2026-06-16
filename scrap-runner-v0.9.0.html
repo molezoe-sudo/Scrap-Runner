@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.3';
+const VERSION = '0.9.6';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -708,6 +708,34 @@ function gearSwap(slot){ const list=GEAR[slot], g=META.gear[slot]; const i=list.
 function crewHire(slot){ const g=META.gear[slot]; if(g.level<10||g.crew||(META.cores||0)<crewHireCost())return; META.cores-=crewHireCost(); g.crew={level:1, xp:0, kills:0, name:genCrewName()}; saveMeta(); Audio2.charged(); }
 function crewTrain(slot){ const g=META.gear[slot]; if(!g.crew)return; const c=crewTrainCost(slot); if((META.cores||0)<c)return; META.cores-=c; g.crew.level++; saveMeta(); Audio2.charged(); }
 function gearDefault(){ const o={}; for(const s of GEAR_SLOTS) o[s]={piece:GEAR[s][0].id, level:0, crew:null}; return o; }
+
+/* ---------- storage bridge ------------------------------------------
+   window.storage is the one persistence seam the save system talks to.
+   Standalone (no host frame): real localStorage, keyed by save slot.
+   Embedded (e.g. inside a host app's iframe): bridge get/set over
+   postMessage to the parent frame, which owns the actual persistence
+   (cloud, etc). Either way the rest of the game never knows the
+   difference — loadMeta()/saveMeta() just call window.storage.*. ◇ */
+const SR_SLOT = (() => { const n=parseInt(new URLSearchParams(location.search).get('slot'),10); return (n>=1&&n<=3)?n:null; })();
+function srKey(key){ return SR_SLOT ? key+'_slot_'+SR_SLOT : key; }
+window.storage = (function(){
+  let embedded=false; try{ embedded = window.parent !== window; }catch(e){ embedded=true; }
+  if(!embedded){
+    return {
+      get: async (key) => { try{ const v=localStorage.getItem(srKey(key)); return v?{value:v}:null; }catch(e){ return null; } },
+      set: async (key,value) => { try{ localStorage.setItem(srKey(key),value); }catch(e){} },
+    };
+  }
+  let seq=0; const pending={};
+  window.addEventListener('message', (e)=>{ const d=e.data; if(!d||d.source!=='nexus-arcade-host'||d.id==null)return; const cb=pending[d.id]; if(cb){ delete pending[d.id]; cb(d); } });
+  function call(type,payload){ return new Promise((resolve)=>{ const id=++seq; pending[id]=resolve;
+    parent.postMessage(Object.assign({source:'scrap-runner',type,id},payload),'*');
+    setTimeout(()=>{ if(pending[id]){ delete pending[id]; resolve(null); } },4000); }); }
+  return {
+    get: (key) => call('storage:get',{key:srKey(key)}).then(d=> (d&&d.value!=null) ? {value:d.value} : null),
+    set: (key,value) => call('storage:set',{key:srKey(key),value}),
+  };
+})();
 
 const META_DEFAULT = { salvage:0, cores:0, maxLevel:0, unlocks:{}, seen:{}, relics:{}, equippedRelic:null, gear:gearDefault(), upg:{frame:0,magnet:0,charge:0,reroll:0,veteran:0,extradraft:0,crit:0,move:0,power:0,shield:0,salvageboost:0,elite:0,warhead:0,overflow:0,primed:0,reactor:0,revive:0,coremag:0} };
 let META = JSON.parse(JSON.stringify(META_DEFAULT));

@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.11';
+const VERSION = '0.9.12';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -624,6 +624,39 @@ const MODS = [
   { id:'omnimark', name:'Omnimark', rarity:'M', source:'base', desc:()=>'Crits apply Marked, Fractured AND Burning — fuels every reaction.',
     rules:[ { on:'onCrit', do:c=>{ applyStatus(c.target,'marked',0,4); applyStatus(c.target,'fractured',1,5); applyStatus(c.target,'burning',1,3); } } ], max:1 },
 ];
+// ◇ weapon-specific upgrades — only ever offered while that exact weapon is equipped
+// (modRelevant() gates on m.weapon === build.primary). Two per primary, same stats-merge
+// machinery as generic mods (recompute()), using a few new per-weapon hooks: extraPellets/
+// extraMissiles/rangeAdd (additive), pelletSpreadMult/heatRateMult/blastMult (multiplicative).
+const WEAPON_MODS = [
+  { id:'rep_hotfeed', weapon:'repeater', name:'Hot Feed', rarity:'C', source:'base', stats:{fireMult:0.85}, max:3, desc:n=>`${ratePctStr(Math.pow(0.85,n))} fire rate.` },
+  { id:'rep_drill', weapon:'repeater', name:'Drilling Rounds', rarity:'R', source:'base', stats:{pierce:1}, max:3, desc:n=>`+${n} pierce.` },
+  { id:'torch_cool', weapon:'torch', name:'Cooled Nozzle', rarity:'C', source:'base', stats:{heatRateMult:0.8}, max:3, desc:n=>`Beam heat builds ${Math.round((1-Math.pow(0.8,n))*100)}% slower.` },
+  { id:'torch_heat', weapon:'torch', name:'Superheated Coil', rarity:'R', source:'base', stats:{damageMult:1.3}, max:3, desc:n=>`${pctStr(Math.pow(1.3,n))} beam damage.` },
+  { id:'witch_coil', weapon:'witchlight', name:'Extended Coil', rarity:'R', source:'base', stats:{rangeAdd:60}, max:3, desc:n=>`Chain jump range +${60*n}.` },
+  { id:'witch_capacitor', weapon:'witchlight', name:'Resonant Capacitor', rarity:'E', source:'base', stats:{damageMult:1.35}, max:3, desc:n=>`${pctStr(Math.pow(1.35,n))} Witchlight damage.` },
+  { id:'scat_wide', weapon:'scatter', name:'Wide Choke', rarity:'R', source:'base', stats:{extraPellets:2}, max:3, desc:n=>`+${2*n} pellets per shot.` },
+  { id:'scat_tight', weapon:'scatter', name:'Tight Choke', rarity:'C', source:'base', stats:{pelletSpreadMult:0.8}, max:3, desc:n=>`Spread ${Math.round((1-Math.pow(0.8,n))*100)}% tighter.` },
+  { id:'rail_spike', weapon:'rail', name:'Hardened Spike', rarity:'R', source:'base', stats:{pierce:2}, max:3, desc:n=>`+${2*n} pierce.` },
+  { id:'rail_velocity', weapon:'rail', name:'Velocity Coil', rarity:'E', source:'base', stats:{damageMult:1.35}, max:3, desc:n=>`${pctStr(Math.pow(1.35,n))} Rail Spike damage.` },
+  { id:'arc_vent', weapon:'arclance', name:'Discharge Vents', rarity:'C', source:'base', stats:{heatRateMult:0.8}, max:3, desc:n=>`Beam heat builds ${Math.round((1-Math.pow(0.8,n))*100)}% slower.` },
+  { id:'arc_resonant', weapon:'arclance', name:'Resonant Coil', rarity:'R', source:'base', stats:{damageMult:1.3}, max:3, desc:n=>`${pctStr(Math.pow(1.3,n))} beam damage.` },
+  { id:'split_quad', weapon:'splitshot', name:'Quad Burst', rarity:'R', source:'base', stats:{extraPellets:1}, max:3, desc:n=>`+${n} pellet${n>1?'s':''} per burst.` },
+  { id:'split_focus', weapon:'splitshot', name:'Focused Burst', rarity:'C', source:'base', stats:{pelletSpreadMult:0.75}, max:3, desc:n=>`Spread ${Math.round((1-Math.pow(0.75,n))*100)}% tighter.` },
+  { id:'temp_storm', weapon:'tempest', name:'Storm Front', rarity:'R', source:'base', stats:{rangeAdd:60}, max:3, desc:n=>`Chain jump range +${60*n}.` },
+  { id:'temp_living', weapon:'tempest', name:'Living Storm', rarity:'E', source:'base', stats:{chains:1}, max:2, desc:n=>`+${n} chain hop${n>1?'s':''}.` },
+  { id:'rime_hardpoint', weapon:'rimelance', name:'Hardpoint Lance', rarity:'R', source:'base', stats:{pierce:1}, max:3, desc:n=>`+${n} pierce.` },
+  { id:'rime_amp', weapon:'rimelance', name:'Cryo Amplifier', rarity:'R', source:'base', stats:{damageMult:1.3}, max:3, desc:n=>`${pctStr(Math.pow(1.3,n))} Rime Lance damage.` },
+  { id:'frost_wide', weapon:'frostfan', name:'Wide Vents', rarity:'R', source:'base', stats:{extraPellets:2}, max:3, desc:n=>`+${2*n} pellets per shot.` },
+  { id:'frost_narrow', weapon:'frostfan', name:'Narrow Vents', rarity:'C', source:'base', stats:{pelletSpreadMult:0.8}, max:3, desc:n=>`Spread ${Math.round((1-Math.pow(0.8,n))*100)}% tighter.` },
+  { id:'mp_cluster', weapon:'missilepod', name:'Cluster Warheads', rarity:'R', source:'base', stats:{blastMult:1.4}, max:3, desc:n=>`${pctStr(Math.pow(1.4,n))} blast radius.` },
+  { id:'mp_twinrack', weapon:'missilepod', name:'Twin Racks', rarity:'E', source:'base', stats:{extraMissiles:1}, max:2, desc:n=>`+${n} missile${n>1?'s':''} per volley.` },
+  { id:'mortar_heavy', weapon:'mortar', name:'Heavy Charge', rarity:'R', source:'base', stats:{blastMult:1.35}, max:3, desc:n=>`${pctStr(Math.pow(1.35,n))} blast radius.` },
+  { id:'mortar_fuse', weapon:'mortar', name:'Extended Fuse', rarity:'C', source:'base', stats:{rangeAdd:60}, max:3, desc:n=>`Detonation range +${60*n}.` },
+  { id:'seek_swarm', weapon:'seekerpod', name:'Swarm Protocol', rarity:'E', source:'base', stats:{extraMissiles:1}, max:2, desc:n=>`+${n} seeker${n>1?'s':''} per volley.` },
+  { id:'seek_warhead', weapon:'seekerpod', name:'Warhead Boost', rarity:'R', source:'base', stats:{blastMult:1.4}, max:3, desc:n=>`${pctStr(Math.pow(1.4,n))} blast radius.` },
+];
+const ALL_MODS = MODS.concat(WEAPON_MODS);
 
 /* =====================================================================
    STATE + BUILD
@@ -791,7 +824,9 @@ loadMeta();
 
 // Standard / Repeater / Pyre are free; everything else is earned.
 // Workshop tiers gate batches of upgrades; buying a tier reveals the next.
-const UNLOCK_COST = { wake:120, reliquary:160, choirmaster:180, scrapwright:150, reaver:140, aegis:190, vanguard:170, torch:90, witchlight:90, scatter:90, rail:110, arclance:100, splitshot:95, tempest:115, rimelance:105, frostfan:100, missilepod:115, mortar:135, seekerpod:140, silence:110, nova:100, purge:120, singularity:130, cryonova:110, stasis:125, summon:130, prototypes:200, workshop2:300, workshop3:650 };
+// ◇ balance: ~1.5x across the board on top of the payout cut above — these were already
+// tiered sensibly relative to each other, just too cheap in absolute terms.
+const UNLOCK_COST = { wake:180, reliquary:240, choirmaster:270, scrapwright:225, reaver:210, aegis:285, vanguard:255, torch:135, witchlight:135, scatter:135, rail:165, arclance:150, splitshot:140, tempest:170, rimelance:155, frostfan:150, missilepod:170, mortar:200, seekerpod:210, silence:165, nova:150, purge:180, singularity:195, cryonova:165, stasis:190, summon:195, prototypes:300, workshop2:450, workshop3:975 };
 function isUnlocked(kind,key){
   if(kind==='hull')    return key==='standard'  || !!META.unlocks['hull_'+key];
   if(kind==='primary') return key==='repeater'  || !!META.unlocks['primary_'+key];
@@ -832,7 +867,7 @@ function buildRules(){
   push(HULLS[build.hull].rules);
   push(PRIMARIES[build.primary].rules);
   push(SPECIALS[build.special].rules);
-  for(const id of build.mods){ const m=MODS.find(x=>x.id===id); push(m&&m.rules); }
+  for(const id of build.mods){ const m=ALL_MODS.find(x=>x.id===id); push(m&&m.rules); }
 }
 // ── RELICS — one equipped per run. Endgame drops that bend the rules. ──
 // flavours: STATUS-MODIFIER (changes how a status behaves), SCALING (grows over a run), PACT (flat trade-off).
@@ -864,16 +899,19 @@ function recompute(){
   const hull=HULLS[build.hull], prim=PRIMARIES[build.primary];
   stats={ maxHp:hull.maxHp, speed:hull.speed, hitbox:hull.hitbox, abilityCd:hull.abilityCd,
     damageMult:1, fireMult:1, pierce:0, chains:(prim.chains||0), scrapMult:1, critChance:0.10,
-    hitboxMult:1, markedSpecialMult:1.0, shatterpoint:false, droneTarget:(hull.droneBase||0) };
+    hitboxMult:1, markedSpecialMult:1.0, shatterpoint:false, droneTarget:(hull.droneBase||0),
+    // ◇ weapon-specific mod hooks — extra pellets/missiles and range are additive, the rest
+    // multiplicative (see the additive-keys list just below)
+    extraPellets:0, pelletSpreadMult:1, heatRateMult:1, rangeAdd:0, blastMult:1, extraMissiles:0 };
   if(hull.weaponStats){ if(hull.weaponStats.damageMult)stats.damageMult*=hull.weaponStats.damageMult; if(hull.weaponStats.fireMult)stats.fireMult*=hull.weaponStats.fireMult; }
   for(const id of build.mods){
-    const m=MODS.find(x=>x.id===id); if(!m)continue;
+    const m=ALL_MODS.find(x=>x.id===id); if(!m)continue;
     if(m.flag==='shatterpoint') stats.shatterpoint=true;
     if(m.id==='executioner') stats.markedSpecialMult=2.0; // also reflected for silence special vs marked
     if(!m.stats)continue;
     for(const k in m.stats){
       const v=m.stats[k];
-      if(k==='maxHp'||k==='pierce'||k==='chains') stats[k]+=v;
+      if(k==='maxHp'||k==='pierce'||k==='chains'||k==='extraPellets'||k==='rangeAdd'||k==='extraMissiles') stats[k]+=v;
       else stats[k]*=v;   // multiplicative stats
     }
   }
@@ -1236,7 +1274,7 @@ function firePrimary(dt){
       player.beamOn=true;
       const dps=prim.dps*stats.damageMult*ocMul*(player.tFrenzy>0?1.5:1);
       for(const e of enemies){ if(Math.abs(e.x-player.x)<e.r+10 && e.y>0 && e.y<player.y){ damageEnemy(e, dps*dt, prim.type||'thermal', true, true, true); } }
-      player.heat=Math.min(1, player.heat+prim.heatRate*dt);
+      player.heat=Math.min(1, player.heat+prim.heatRate*stats.heatRateMult*dt);
       if(player.heat>=1) player.heatLock=true;
     }
     return;
@@ -1256,7 +1294,7 @@ function firePrimary(dt){
       for(let i=0;i<chains&&cur;i++){
         targets.push(cur); const from=cur;
         pool=pool.filter(e=>e!==cur);
-        cur=pool.length?nearestWithin(from,pool,prim.range):null;
+        cur=pool.length?nearestWithin(from,pool,prim.range+stats.rangeAdd):null;
       }
       let prev=player;
       for(let idx=0;idx<targets.length;idx++){ const t=targets[idx];
@@ -1264,15 +1302,15 @@ function firePrimary(dt){
         damageEnemy(t, prim.dmg*stats.damageMult*ocMul*fall, 'shock', true, true); spawnArc(prev,t); prev=t; }
       RUN.shots++;
     } else if(prim.kind==='missile'||prim.kind==='bomb'||prim.kind==='homing'){
-      const dmg=prim.dmg*stats.damageMult*ocMul, n=prim.count||1;
+      const dmg=prim.dmg*stats.damageMult*ocMul, n=(prim.count||1)+stats.extraMissiles;
       for(let i=0;i<n;i++){ const off=(i-(n-1)/2)*16;
         pBullets.push({ x:player.x+off, y:player.y-12, oy:player.y-12, vx:(prim.kind==='homing'?(off*4):0), vy:-(prim.speed||520), r:prim.r||5, dmg, type:(prim.type||'thermal'), pierce:0,
-          missile:true, kind:prim.kind, home:(prim.kind==='homing'?2.2:0), range:(prim.kind==='bomb'?(prim.range||300):0),
-          explode:{r:prim.blast||52, dmg:prim.blastDmg!=null?prim.blastDmg*stats.damageMult*ocMul:dmg, type:(prim.type||'thermal')}, trail:[] }); }
+          missile:true, kind:prim.kind, home:(prim.kind==='homing'?2.2:0), range:(prim.kind==='bomb'?((prim.range||300)+stats.rangeAdd):0),
+          explode:{r:(prim.blast||52)*stats.blastMult, dmg:prim.blastDmg!=null?prim.blastDmg*stats.damageMult*ocMul:dmg, type:(prim.type||'thermal')}, trail:[] }); }
       RUN.shots+=n;
     } else {
       const pierce=stats.pierce+ocPierce+(prim.pierceBonus||0), dmg=prim.dmg*stats.damageMult*ocMul, sp=620;
-      if(prim.pellets){ const n=prim.pellets, step=prim.spread/(n>1?n-1:1); RUN.shots+=n;
+      if(prim.pellets){ const n=prim.pellets+stats.extraPellets, step=(prim.spread*stats.pelletSpreadMult)/(n>1?n-1:1); RUN.shots+=n;
         for(let i=0;i<n;i++){ const a=(i-(n-1)/2)*step; pBullets.push({ x:player.x, y:player.y-12, vx:Math.sin(a)*sp, vy:-Math.cos(a)*sp, r:3, dmg, type:prim.type, pierce }); } }
       else { pBullets.push({ x:player.x, y:player.y-12, vx:0, vy:-sp, r:4, dmg, type:prim.type, pierce }); RUN.shots++; }
     }
@@ -1423,7 +1461,11 @@ function bankRun(){
   hiScore=Math.max(hiScore,score); hiWave=Math.max(hiWave,wave);
   if(wave>(META.maxLevel||0)) META.maxLevel=wave;
   // payout rewards what you actually earned (score + scrap), not how deep you skipped
-  lastEarned=Math.round((score*0.03 + scrap*0.6) * (1+(META.upg.salvageboost||0)*0.12));
+  // ◇ balance: was 0.03/0.6 — a single ~wave-10 run could clear several thousand salvage,
+  // enough to buy multiple hulls/weapons/upgrades outright. 5x cut on both terms: progression
+  // should take real, repeated runs, not one good clear. Tune CONVERSION freely.
+  const CONVERSION={score:0.006, scrap:0.12};
+  lastEarned=Math.round((score*CONVERSION.score + scrap*CONVERSION.scrap) * (1+(META.upg.salvageboost||0)*0.12));
   META.salvage+=lastEarned; META.cores=(META.cores||0)+coresEarned; coresEarned=0;
   if(!META.life)META.life=lifeDefault(); const L=META.life;
   L.runs++; L.kills+=RUN.kills; L.bossKills+=RUN.bossKills; L.time+=RUN.t; L.shots+=RUN.shots; L.hits+=RUN.hits;
@@ -1456,6 +1498,7 @@ function updateStatuses(dt){
 
 /* ---------- draft --------------------------------------------------- */
 function modRelevant(m,b){
+  if(m.weapon) return m.weapon===b.primary;   // weapon-specific upgrade — only offered with that exact weapon equipped
   const t=PRIMARIES[b.primary].type, k=PRIMARIES[b.primary].kind, owns=id=>b.mods.indexOf(id)>=0;
   switch(m.id){
     case 'accelerant': case 'pyroclasm': return t==='thermal';        // need a Burning source
@@ -1470,7 +1513,7 @@ function modRelevant(m,b){
   }
 }
 function modCount(id){ let n=0; for(const x of build.mods) if(x===id) n++; return n; }
-function availMods(){ return MODS.filter(m=>modCount(m.id)<(m.max||5)&&(!m.proto||META.unlocks.prototypes)&&modRelevant(m,build)); }
+function availMods(){ return ALL_MODS.filter(m=>modCount(m.id)<(m.max||5)&&(!m.proto||META.unlocks.prototypes)&&modRelevant(m,build)); }
 function openDraft(mode){
   draftMode=mode||'wave';
   Audio2.draft();
@@ -1883,7 +1926,7 @@ function drawHUD(){
   ctx.save(); glow(COL.scrap,3); ctx.fillStyle=COL.scrap; ctx.fillRect(16,34,7,7); noGlow(); ctx.restore();
   txt(String(scrap),30,41,11,COL.scrap,'left'); txt('SALVAGE',60,41,8,COL.dim,'left','Orbitron');
   // mod pips sit on their own row, clear of a long score
-  let mx=120; const seen=[]; for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=MODS.find(x=>x.id===id); if(!m)continue; ctx.save(); glow(rarCol(m.rarity),3); ctx.fillStyle=rarCol(m.rarity); ctx.fillRect(mx,34,5,5); noGlow(); ctx.restore(); mx+=7; if(mx>170)break; }
+  let mx=120; const seen=[]; for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=ALL_MODS.find(x=>x.id===id); if(!m)continue; ctx.save(); glow(rarCol(m.rarity),3); ctx.fillStyle=rarCol(m.rarity); ctx.fillRect(mx,34,5,5); noGlow(); ctx.restore(); mx+=7; if(mx>170)break; }
 
   // ── top-centre: threat / contact readout (below the title tab) ─
   // ◇ readability: a champion or boss draws its own name+bar right here (y~16-46) —
@@ -1981,7 +2024,7 @@ function drawPause(){
   rrow('Charge','×'+(stats.chargeMult||1).toFixed(2));
   rhead('MODS · '+activeRules.length+' synergy rules');
   if(!build.mods.length){ txt('(none drafted yet)',RX,ry,11,COL.dim,'left'); ry+=16; }
-  else { const seen=[]; let shown=0; for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=MODS.find(x=>x.id===id); if(!m)continue; const n=build.mods.filter(z=>z===id).length;
+  else { const seen=[]; let shown=0; for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=ALL_MODS.find(x=>x.id===id); if(!m)continue; const n=build.mods.filter(z=>z===id).length;
       if(shown<7){ txt('• '+m.name+(n>1?(' ×'+n):''),RX,ry,10.5,rarCol(m.rarity),'left'); ry+=16; } shown++; }
     if(shown>7) txt('+ '+(shown-7)+' more drafted…',RX,ry,9.5,COL.dim,'left'); }
 
@@ -2301,7 +2344,7 @@ function drawCodex(){
   y=codexSection('HULLS','hull', hullKeys.map(k=>({id:k,name:HULLS[k].name,sub:HULLS[k].blurb})), y);
   y=codexSection('PRIMARY WEAPONS','primary', primKeys.map(k=>({id:k,name:PRIMARIES[k].name,sub:PRIMARIES[k].blurb})), y);
   y=codexSection('SPECIAL WEAPONS','special', specKeys.map(k=>({id:k,name:SPECIALS[k].name,sub:SPECIALS[k].blurb})), y);
-  y=codexSection('MODS','mod', MODS.map(m=>({id:m.id,name:m.name,sub:m.desc(1),rare:rarCol(m.rarity)})), y);
+  y=codexSection('MODS','mod', ALL_MODS.map(m=>({id:m.id,name:m.name+(m.weapon?(' ['+PRIMARIES[m.weapon].name+']'):''),sub:m.desc(1),rare:rarCol(m.rarity)})), y);
   y=codexSection('REACTIONS','reaction', REACTIONS.map(R=>({id:R.name,name:R.name,sub:R.desc,rare:R.col})), y);
   y=secHeader('— STATUS EFFECTS · 5/5 —',y);
   const STATDEF=[['Burning','Damage over time (thermal source).','#ff8c42'],['Shocked','Slowed; Witchlight chains between Shocked foes.','#7aa2ff'],['Marked','Takes +25% damage from all sources.','#ffd166'],['Fractured','Armour stripped; +damage, stacks to 5.','#ff5470'],['Chilled','Slows; stacks toward a hard freeze.','#aef0ff']];
@@ -2505,9 +2548,11 @@ function drawDraft(){
     ctx.fillStyle=grad; ctx.strokeStyle=col; ctx.lineWidth=1.5; if(owned>0) glow(col,8);
     cutRect(cx,cy,cw,cardH,12); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
     uiButtons.push({x:cx,y:cy,w:cw,h:cardH,action:()=>takeMod(m)});
-    drawModIcon(cx+cw/2,cy+30,17,col);
+    const wSpr=m.weapon?SPRITE_CACHE['weapon_'+m.weapon]:null;
+    if(wSpr && wSpr.complete && wSpr.naturalWidth) drawTintedSprite(wSpr, cx+cw/2-15, cy+15, 30, 30, col);
+    else drawModIcon(cx+cw/2,cy+30,17,col);
     txt(m.name.toUpperCase()+(owned>0?(' ×'+owned):''), cx+cw/2,cy+62,Math.min(12,10+(n<=3?1:0)),'#e8eefc','center','Orbitron');
-    txt(rarName(m.rarity).toUpperCase()+' · MOD', cx+cw/2,cy+76,8.5,col,'center','Orbitron');
+    txt(rarName(m.rarity).toUpperCase()+' · '+(m.weapon?PRIMARIES[m.weapon].name.toUpperCase():'MOD'), cx+cw/2,cy+76,8.5,col,'center','Orbitron');
     wrap(m.desc(owned+1), cx+10, cy+94, cw-20, 12, '#9fb0cf', 10);
     if(cap>1) txt('stacks to '+cap, cx+cw-10, cy+cardH-10, 8, COL.dim,'right');
   }
@@ -2636,7 +2681,7 @@ function updatePanels(){
     setTxt('pMisc', (s.pierce||0)+' / '+(player.shields||0));
     // live mods readout
     const seen=[]; let html='';
-    for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=MODS.find(x=>x.id===id); if(!m)continue; const n=build.mods.filter(z=>z===id).length; const c=rarCol(m.rarity);
+    for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=ALL_MODS.find(x=>x.id===id); if(!m)continue; const n=build.mods.filter(z=>z===id).length; const c=rarCol(m.rarity);
       html+=`<div class="li" style="padding:2px 0;gap:7px"><span class="sw" style="background:${c};box-shadow:0 0 6px ${c}"></span><span style="flex:1">${m.name}</span>${n>1?`<b style="color:${c}">×${n}</b>`:''}</div>`; }
     setHtml('pMods', html||'<div class="li" style="color:#46566f">none yet</div>');
   } else {

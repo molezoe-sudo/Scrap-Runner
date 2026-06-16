@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.6';
+const VERSION = '0.9.7';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -1011,8 +1011,18 @@ function launch(){
   bossWarn=0; bossDeathFx=0; vignette=0; lowHpT=0; pendingMini=false; strikeWarns=[];
   RUN=freshRun();
   wave=(startSector-1)*5;                     // skip to a deeper start
+  applyCatchup(1+Math.floor(wave*CATCHUP_RANK_PER_WAVE));   // ◇ balance: starting deep shouldn't mean starting bare
   setBgTheme(Math.floor(wave/5));
   state='playing'; startWave();
+}
+const CATCHUP_RANK_PER_WAVE=0.5;     // ◇ balance: ranks granted per skipped wave when starting via sector-select. Tune freely.
+function applyCatchup(targetRank){
+  if(!player||targetRank<=player.rank) return;
+  const grant=targetRank-player.rank;
+  player.rank=targetRank; player.xp=0; player.xpNext=xpForRank(targetRank);
+  draftMode='rank';                                        // so rarity weights match a real rank-up pick
+  for(let i=0;i<grant;i++){ const offer=pickN(availMods(),1); if(offer.length){ build.mods.push(offer[0].id); discover('mod',offer[0].id); } }
+  buildRules(); recompute();
 }
 function startWave(){
   wave++; waveActive=true; spawnQueue=[];
@@ -1445,7 +1455,7 @@ function takeMod(m){ build.mods.push(m.id); discover('mod',m.id); buildRules(); 
 function skipDraft(){ resolveDraft(); }
 function reroll(){ if(scrap<rerollCost)return; scrap-=rerollCost; rerollCost=Math.round(rerollCost*1.6); draftOffer=pickN(availMods(),3+(META.upg.extradraft||0)); }
 function nextWave(){ state='playing'; if(player) player.inv=Math.max(player.inv,1.2); startWave(); }
-function xpForRank(r){ return Math.round(20*Math.pow(1.28, r-1)); }
+function xpForRank(r){ return Math.round(20*Math.pow(1.36, r-1)); }   // ◇ balance: steeper late-rank wall — r1 unchanged (still 20), growth 1.28→1.36 so each successive rank costs noticeably more
 function gainXp(n){
   if(!player) return; player.xp+=n;
   while(player.xp>=player.xpNext){ player.xp-=player.xpNext; player.rank++; player.xpNext=xpForRank(player.rank); pendingDrafts++; }

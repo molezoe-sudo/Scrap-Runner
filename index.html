@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.12';
+const VERSION = '0.9.13';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -807,7 +807,7 @@ window.storage = (function(){
   };
 })();
 
-const META_DEFAULT = { salvage:0, cores:0, maxLevel:0, unlocks:{}, seen:{}, relics:{}, equippedRelic:null, gear:gearDefault(), upg:{frame:0,magnet:0,charge:0,reroll:0,veteran:0,extradraft:0,crit:0,move:0,power:0,shield:0,salvageboost:0,elite:0,warhead:0,overflow:0,primed:0,reactor:0,revive:0,coremag:0} };
+const META_DEFAULT = { salvage:0, cores:0, maxLevel:0, unlocks:{}, seen:{}, relics:{}, equippedRelic:null, gear:gearDefault(), weaponUpg:{}, upg:{frame:0,magnet:0,charge:0,reroll:0,veteran:0,extradraft:0,crit:0,move:0,power:0,shield:0,salvageboost:0,elite:0,warhead:0,overflow:0,primed:0,reactor:0,revive:0,coremag:0} };
 let META = JSON.parse(JSON.stringify(META_DEFAULT));
 let lastEarned = 0, coresEarned = 0, endReason='lost', startSector=1;
 function gearIntegrity(){ if(!META.gear)META.gear=gearDefault(); for(const s of GEAR_SLOTS){ if(!META.gear[s])META.gear[s]={piece:GEAR[s][0].id,level:0,crew:null}; if(!GEAR[s].find(p=>p.id===META.gear[s].piece))META.gear[s].piece=GEAR[s][0].id; } }
@@ -856,9 +856,43 @@ const UPGRADES_META = [
   { id:'revive',     tier:3, name:'Phoenix Protocol', desc:'Survive one fatal hit per run', max:1,  cost:()=>2400 },
   { id:'coremag',    tier:3, name:'Core Magnet',      desc:'+1 Core per deep boss / lvl',   max:3,  cost:l=>900+l*800 },
 ];
+// ◇ persistent, salvage-bought weapon upgrades — Hangar/Workshop, separate from the in-run
+// WEAPON_MODS draft pool above. Once bought a level is permanent and applies to every future
+// run with that weapon equipped (see recompute()'s WEAPON_UPGRADES_META loop). effects mirror
+// the gear-piece convention: {stat, per, mult} — mult:true means stats[stat]*=(1+per*level),
+// mult:false means stats[stat]+=per*level.
+const WEAPON_UPGRADES_META = [
+  { id:'rep_hotfeed_h',  weapon:'repeater',  name:'Hot Feed',           desc:'-6% fire interval / lvl',        max:5, cost:l=>110+l*70,  effects:[{stat:'fireMult', per:-0.06, mult:true}] },
+  { id:'rep_drill_h',    weapon:'repeater',  name:'Drilling Rounds',    desc:'+1 pierce / lvl',                max:3, cost:l=>150+l*100, effects:[{stat:'pierce', per:1, mult:false}] },
+  { id:'torch_cool_h',   weapon:'torch',     name:'Cooled Nozzle',      desc:'-8% heat buildup / lvl',         max:5, cost:l=>120+l*70,  effects:[{stat:'heatRateMult', per:-0.08, mult:true}] },
+  { id:'torch_heat_h',   weapon:'torch',     name:'Superheated Coil',   desc:'+10% beam damage / lvl',         max:5, cost:l=>140+l*85,  effects:[{stat:'damageMult', per:0.10, mult:true}] },
+  { id:'witch_coil_h',   weapon:'witchlight',name:'Extended Coil',      desc:'Chain jump range +40 / lvl',     max:5, cost:l=>120+l*70,  effects:[{stat:'rangeAdd', per:40, mult:false}] },
+  { id:'witch_cap_h',    weapon:'witchlight',name:'Resonant Capacitor', desc:'+12% Witchlight damage / lvl',   max:5, cost:l=>140+l*85,  effects:[{stat:'damageMult', per:0.12, mult:true}] },
+  { id:'scat_wide_h',    weapon:'scatter',   name:'Wide Choke',         desc:'+1 pellet / lvl',                max:3, cost:l=>150+l*100, effects:[{stat:'extraPellets', per:1, mult:false}] },
+  { id:'scat_tight_h',   weapon:'scatter',   name:'Tight Choke',        desc:'-8% spread / lvl',               max:5, cost:l=>110+l*70,  effects:[{stat:'pelletSpreadMult', per:-0.08, mult:true}] },
+  { id:'rail_spike_h',   weapon:'rail',      name:'Hardened Spike',     desc:'+1 pierce / lvl',                max:3, cost:l=>150+l*100, effects:[{stat:'pierce', per:1, mult:false}] },
+  { id:'rail_velocity_h',weapon:'rail',      name:'Velocity Coil',      desc:'+10% damage / lvl',              max:5, cost:l=>140+l*85,  effects:[{stat:'damageMult', per:0.10, mult:true}] },
+  { id:'arc_vent_h',     weapon:'arclance',  name:'Discharge Vents',    desc:'-8% heat buildup / lvl',         max:5, cost:l=>120+l*70,  effects:[{stat:'heatRateMult', per:-0.08, mult:true}] },
+  { id:'arc_resonant_h', weapon:'arclance',  name:'Resonant Coil',      desc:'+10% beam damage / lvl',         max:5, cost:l=>140+l*85,  effects:[{stat:'damageMult', per:0.10, mult:true}] },
+  { id:'split_quad_h',   weapon:'splitshot', name:'Quad Burst',         desc:'+1 pellet / lvl',                max:2, cost:l=>160+l*110, effects:[{stat:'extraPellets', per:1, mult:false}] },
+  { id:'split_focus_h',  weapon:'splitshot', name:'Focused Burst',      desc:'-8% spread / lvl',               max:5, cost:l=>110+l*70,  effects:[{stat:'pelletSpreadMult', per:-0.08, mult:true}] },
+  { id:'temp_storm_h',   weapon:'tempest',   name:'Storm Front',        desc:'Chain jump range +40 / lvl',     max:5, cost:l=>120+l*70,  effects:[{stat:'rangeAdd', per:40, mult:false}] },
+  { id:'temp_living_h',  weapon:'tempest',   name:'Living Storm',       desc:'+1 chain hop / lvl',             max:2, cost:l=>200+l*150, effects:[{stat:'chains', per:1, mult:false}] },
+  { id:'rime_hard_h',    weapon:'rimelance', name:'Hardpoint Lance',    desc:'+1 pierce / lvl',                max:3, cost:l=>150+l*100, effects:[{stat:'pierce', per:1, mult:false}] },
+  { id:'rime_amp_h',     weapon:'rimelance', name:'Cryo Amplifier',     desc:'+10% damage / lvl',              max:5, cost:l=>140+l*85,  effects:[{stat:'damageMult', per:0.10, mult:true}] },
+  { id:'frost_wide_h',   weapon:'frostfan',  name:'Wide Vents',         desc:'+1 pellet / lvl',                max:3, cost:l=>150+l*100, effects:[{stat:'extraPellets', per:1, mult:false}] },
+  { id:'frost_narrow_h', weapon:'frostfan',  name:'Narrow Vents',       desc:'-8% spread / lvl',               max:5, cost:l=>110+l*70,  effects:[{stat:'pelletSpreadMult', per:-0.08, mult:true}] },
+  { id:'mp_cluster_h',   weapon:'missilepod',name:'Cluster Warheads',   desc:'+12% blast radius / lvl',        max:5, cost:l=>130+l*80,  effects:[{stat:'blastMult', per:0.12, mult:true}] },
+  { id:'mp_twinrack_h',  weapon:'missilepod',name:'Twin Racks',         desc:'+1 missile per volley / lvl',    max:2, cost:l=>220+l*160, effects:[{stat:'extraMissiles', per:1, mult:false}] },
+  { id:'mortar_heavy_h', weapon:'mortar',    name:'Heavy Charge',       desc:'+12% blast radius / lvl',        max:5, cost:l=>130+l*80,  effects:[{stat:'blastMult', per:0.12, mult:true}] },
+  { id:'mortar_fuse_h',  weapon:'mortar',    name:'Extended Fuse',      desc:'Detonation range +40 / lvl',     max:5, cost:l=>120+l*70,  effects:[{stat:'rangeAdd', per:40, mult:false}] },
+  { id:'seek_swarm_h',   weapon:'seekerpod', name:'Swarm Protocol',     desc:'+1 seeker per volley / lvl',     max:2, cost:l=>220+l*160, effects:[{stat:'extraMissiles', per:1, mult:false}] },
+  { id:'seek_warhead_h', weapon:'seekerpod', name:'Warhead Boost',      desc:'+12% blast radius / lvl',        max:5, cost:l=>130+l*80,  effects:[{stat:'blastMult', per:0.12, mult:true}] },
+];
 function tierOpen(t){ return t===1 || (t===2&&META.unlocks.workshop2) || (t===3&&META.unlocks.workshop3); }
 function buyUnlock(costKey,metaKey){ const c=UNLOCK_COST[costKey]; if(META.unlocks[metaKey]||META.salvage<c)return; META.salvage-=c; META.unlocks[metaKey]=1; saveMeta(); Audio2.charged(); }
 function buyMetaUpg(u){ if(!tierOpen(u.tier))return; const lvl=META.upg[u.id]||0; if(lvl>=u.max)return; const c=u.cost(lvl); if(META.salvage<c)return; META.salvage-=c; META.upg[u.id]=lvl+1; saveMeta(); Audio2.charged(); }
+function buyWeaponUpg(u){ if(!isUnlocked('primary',u.weapon))return; const lvl=(META.weaponUpg&&META.weaponUpg[u.id])||0; if(lvl>=u.max)return; const c=u.cost(lvl); if(META.salvage<c)return; META.salvage-=c; if(!META.weaponUpg)META.weaponUpg={}; META.weaponUpg[u.id]=lvl+1; saveMeta(); Audio2.charged(); }
 function reactMult(){ return 1+(META.upg.reactor||0)*0.20; }
 
 function buildRules(){
@@ -914,6 +948,13 @@ function recompute(){
       if(k==='maxHp'||k==='pierce'||k==='chains'||k==='extraPellets'||k==='rangeAdd'||k==='extraMissiles') stats[k]+=v;
       else stats[k]*=v;   // multiplicative stats
     }
+  }
+  // ◇ persistent weapon upgrades bought in the Hangar — only the ones matching the
+  // currently-equipped primary ever apply (same gear-piece {stat,per,mult} convention)
+  for(const u of WEAPON_UPGRADES_META){
+    if(u.weapon!==build.primary) continue;
+    const lvl=(META.weaponUpg&&META.weaponUpg[u.id])||0; if(!lvl) continue;
+    for(const e of u.effects){ const amt=e.per*lvl; if(e.mult) stats[e.stat]*=(1+amt); else stats[e.stat]+=amt; }
   }
   stats.maxHp += (META.upg.frame||0)*12;
   stats.scrapMult *= (1+(META.upg.magnet||0)*0.12);
@@ -2215,6 +2256,7 @@ function hangarArming(y){
 }
 const WS_DRAWERS=[
   {id:'systems', name:'SHIP SYSTEMS'},
+  {id:'wpn', name:'WEAPON UPGRADE BAY'},
   {id:'t1', name:'UPGRADE BAY · TIER I', tier:1},
   {id:'t2', name:'UPGRADE BAY · TIER II', tier:2, lock:'workshop2', lockName:'Workshop II'},
   {id:'t3', name:'UPGRADE BAY · TIER III', tier:3, lock:'workshop3', lockName:'Workshop III'},
@@ -2241,6 +2283,18 @@ function upgCard(u,x,y,w){
   if(!maxed && drawerT>0.96) uiButtons.push({x,y,w,h,action:()=>buyMetaUpg(u)});
   return h;
 }
+function weaponUpgCard(u,x,y,w){
+  const lvl=(META.weaponUpg&&META.weaponUpg[u.id])||0, maxed=lvl>=u.max, cost=u.cost(lvl), can=!maxed&&META.salvage>=cost, h=50;
+  panel2(x,y,w,h,{col:maxed?'#5ce28a':'#38e8ff', acc:maxed?'#5ce28a':'#ff2da0', greeble:false, fill:maxed?'rgba(92,226,138,0.06)':'rgba(56,232,255,0.05)'});
+  ctx.strokeStyle='rgba(56,232,255,0.22)'; ctx.lineWidth=1; cutRect(x+10,y+11,28,28,6); ctx.stroke();
+  drawWeaponGlyph('primary',PRIMARIES[u.weapon],x+24,y+25);
+  txt(u.name+(u.max>1?('  '+lvl+'/'+u.max):''),x+48,y+18,11.5,maxed?COL.health:COL.text,'left');
+  txt(u.desc,x+48,y+31,8,COL.dim);
+  if(u.max>1) hudBar(x+48,y+37,w-150,4,lvl/u.max, maxed?COL.health:'#38e8ff', Math.min(u.max,12));
+  txt(maxed?'MAX':(cost+' ▣'),x+w-12,y+28,12,maxed?COL.health:(can?COL.scrap:COL.dim),'right');
+  if(!maxed && drawerT>0.96) uiButtons.push({x,y,w,h,action:()=>buyWeaponUpg(u)});
+  return h;
+}
 function hangarWorkshop(y){
   // ease the open drawer
   drawerT += ((openDrawer?1:0)-drawerT)*0.22; if(drawerT<0.001)drawerT=0; if(drawerT>0.999)drawerT=1;
@@ -2260,13 +2314,28 @@ function hangarWorkshop(y){
     if(isOpen && !locked){
       let items;
       if(d.id==='systems') items=[['Prototype Schematics','better rare-tier draft odds','prototypes','prototypes'],['Workshop II','unlock Tier II upgrade bay','workshop2','workshop2'],['Workshop III','unlock Tier III upgrade bay','workshop3','workshop3']];
+      else if(d.id==='wpn'){
+        items=[]; let lastWeapon=null;
+        for(const u of WEAPON_UPGRADES_META){
+          if(!isUnlocked('primary',u.weapon)) continue;
+          if(u.weapon!==lastWeapon){ items.push({header:PRIMARIES[u.weapon].name}); lastWeapon=u.weapon; }
+          items.push(u);
+        }
+        if(!items.length) items=[{header:'unlock a primary weapon in ARMING to upgrade it here'}];
+      }
       else items=UPGRADES_META.filter(u=>u.tier===d.tier);
-      const cardH = d.id==='systems'?46:50, gap=8, fullH=items.length*(cardH+gap)+6;
+      const gap=8, rowH=it=>d.id==='systems'?46:(it.header?22:50);
+      let fullH=6; for(const it of items) fullH+=rowH(it)+gap;
       const ch=fullH*drawerT;
       ctx.save(); ctx.beginPath(); ctx.rect(20,y-3,W-40,Math.max(0,ch)); ctx.clip();
       let cy=y+2 - (1-drawerT)*18;   // slight upward slide-in
       ctx.globalAlpha=drawerT;
-      for(const it of items){ if(d.id==='systems') cy+=unlockCard(it[0],it[1],it[3],it[2],36,cy,W-72)+gap; else cy+=upgCard(it,36,cy,W-72)+gap; }
+      for(const it of items){
+        if(d.id==='systems'){ cy+=unlockCard(it[0],it[1],it[3],it[2],36,cy,W-72)+gap; }
+        else if(d.id==='wpn' && it.header){ txt(it.header.toUpperCase(),40,cy+15,10,'#7fe9ff','left','Orbitron'); ctx.strokeStyle='rgba(56,232,255,0.18)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(40,cy+20); ctx.lineTo(W-40,cy+20); ctx.stroke(); cy+=22+gap; }
+        else if(d.id==='wpn'){ cy+=weaponUpgCard(it,36,cy,W-72)+gap; }
+        else { cy+=upgCard(it,36,cy,W-72)+gap; }
+      }
       ctx.globalAlpha=1; ctx.restore();
       // drawer rails
       ctx.strokeStyle='rgba(255,45,160,0.25)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(28,y-2); ctx.lineTo(28,y-2+ch); ctx.moveTo(W-28,y-2); ctx.lineTo(W-28,y-2+ch); ctx.stroke();

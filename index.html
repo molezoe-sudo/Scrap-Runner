@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.7';
+const VERSION = '0.9.8';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -1507,7 +1507,7 @@ function draw(){
   if(state==='playing'){
     for(const w of strikeWarns){ const k=w.t/w.max; ctx.save(); ctx.strokeStyle='#ff8c42'; glow('#ff8c42',6); ctx.globalAlpha=0.35; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,6.3); ctx.stroke(); ctx.globalAlpha=0.65+0.3*Math.sin(time*16); ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(w.x,w.y,w.r*(0.25+0.75*k),0,6.3); ctx.stroke(); noGlow(); ctx.restore(); }
     const champ=enemies.find(e=>e.champion&&!e.dead);
-    if(champ){ const bw=284,bx=W/2-bw/2,by=46; txt(champ.name,W/2,by-4,11,champ.col,'center','Orbitron'); hudBar(bx,by,bw,10,Math.max(0,champ.hp/champ.maxHp),champ.col,24); }
+    if(champ){ const bw=284,bx=W/2-bw/2,by=46; txtO(champ.name,W/2,by-4,11,champ.col,'center','Orbitron'); hudBar(bx,by,bw,10,Math.max(0,champ.hp/champ.maxHp),champ.col,24); }
     if(vignette>0){ const a=vignette*(0.30+0.16*Math.sin(time*9)); const rg=ctx.createRadialGradient(W/2,H/2,H*0.22,W/2,H/2,H*0.62); rg.addColorStop(0,'rgba(255,40,60,0)'); rg.addColorStop(1,'rgba(255,30,50,'+a.toFixed(3)+')'); ctx.fillStyle=rg; ctx.fillRect(0,0,W,H); }
     if(biomeToast>0 && bossWarn<=0){ const a=Math.min(1, biomeToast>0.7?1:biomeToast/0.7); ctx.save(); ctx.globalAlpha=a; const ty=H*0.32; txt('◇  ENTERING  ◇',W/2,ty,10,COL.dim,'center','Orbitron'); neon(biomeName.toUpperCase(),W/2,ty+26,20,BG_THEMES[bgTheme].star,'center','Orbitron',10); ctx.globalAlpha=1; ctx.restore(); }
     if(bossWarn>0){ const p=Math.sin(time*12)*0.5+0.5; ctx.save(); ctx.globalAlpha=0.10+0.10*p; ctx.fillStyle='#ff2d4f'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
@@ -1735,6 +1735,10 @@ function drawPickup(p){ ctx.save(); ctx.translate(p.x,p.y);
 
 /* ---------- text + buttons ----------------------------------------- */
 function txt(s,x,y,sz,c,al='left',f='Share Tech Mono'){ ctx.fillStyle=c; ctx.textAlign=al; ctx.textBaseline='alphabetic'; ctx.font=`${sz}px "${f}", monospace`; ctx.fillText(s,x,y); }
+// ◇ readability: dark outline behind small HUD text so it stays legible over a bright bar/varied bg, regardless of colour underneath
+function txtO(s,x,y,sz,c,al='left',f='Share Tech Mono'){ ctx.save(); ctx.textAlign=al; ctx.textBaseline='alphabetic'; ctx.font=`${sz}px "${f}", monospace`;
+  ctx.lineJoin='round'; ctx.lineWidth=Math.max(2,sz*0.24); ctx.strokeStyle='rgba(4,6,12,0.85)'; ctx.strokeText(s,x,y);
+  ctx.fillStyle=c; ctx.fillText(s,x,y); ctx.restore(); }
 function glow(col,b){ ctx.shadowColor=col; ctx.shadowBlur=b; }
 function noGlow(){ ctx.shadowBlur=0; ctx.shadowColor='transparent'; }
 function neon(s,x,y,sz,c,al='center',f='Orbitron',b=18){ ctx.save(); glow(c,b); txt(s,x,y,sz,c,al,f); glow(c,b*0.6); txt(s,x,y,sz,c,al,f); noGlow(); txt(s,x,y,sz,'#ffffff',al,f); ctx.restore(); }
@@ -1828,9 +1832,10 @@ function drawHUD(){
   let mx=120; const seen=[]; for(const id of build.mods){ if(seen.indexOf(id)>=0)continue; seen.push(id); const m=MODS.find(x=>x.id===id); if(!m)continue; ctx.save(); glow(rarCol(m.rarity),3); ctx.fillStyle=rarCol(m.rarity); ctx.fillRect(mx,34,5,5); noGlow(); ctx.restore(); mx+=7; if(mx>170)break; }
 
   // ── top-centre: threat / contact readout (below the title tab) ─
-  const tgt=enemies.filter(e=>!e.dead&&!e.boss).length, boss=enemies.some(e=>!e.dead&&e.boss);
-  if(boss) txt('⚠ BOSS CONTACT',W/2,36,10,COL.gunner,'center','Orbitron');
-  else { txt('◎ '+tgt+' TARGETS',W/2,36,9,tgt>0?COL.accent:COL.dim,'center','Orbitron');
+  // ◇ readability: a champion or boss draws its own name+bar right here (y~16-46) —
+  // suppress this readout while either is up instead of stacking text on top of it
+  const tgt=enemies.filter(e=>!e.dead&&!e.boss).length, threatBusy=enemies.some(e=>!e.dead&&(e.boss||e.champion));
+  if(!threatBusy){ txt('◎ '+tgt+' TARGETS',W/2,36,9,tgt>0?COL.accent:COL.dim,'center','Orbitron');
     if(wave%5!==0) txt('next contact · lvl '+(wave+(5-wave%5)),W/2,48,8,COL.dim,'center'); }
 
   // ── top-right: instrument cluster (level + paired dials) ─
@@ -1853,21 +1858,21 @@ function drawHUD(){
   // ── bottom-centre: integrity strip (between the action buttons) ─
   const bw=300, bx=W/2-bw/2, bbY=H-28;
   // conditional sub-bars sit just above, in the centre gap below the pause button
-  if(player.armour>0){ txt('ARMOUR',bx,H-44,8,COL.shield,'left','Orbitron'); hudBar(bx+48,H-49,96,6,Math.min(1,player.armour/60),COL.shield,12); }
-  if(PRIMARIES[build.primary].kind==='beam'){ const ht=player.heat; txt('HEAT',bx+bw-104,H-44,8,ht>0.8?COL.gunner:COL.dim,'left','Orbitron'); hudBar(bx+bw-64,H-49,64,6,ht,ht>0.8?COL.gunner:COL.heat,12); }
-  txt('◇ HULL INTEGRITY',bx,bbY-5,8,COL.dim,'left','Orbitron');
+  if(player.armour>0){ txtO('ARMOUR',bx,H-44,8,COL.shield,'left','Orbitron'); hudBar(bx+48,H-49,96,6,Math.min(1,player.armour/60),COL.shield,12); }
+  if(PRIMARIES[build.primary].kind==='beam'){ const ht=player.heat; txtO('HEAT',bx+bw-104,H-44,8,ht>0.8?COL.gunner:'#cfd6e6','left','Orbitron'); hudBar(bx+bw-64,H-49,64,6,ht,ht>0.8?COL.gunner:COL.heat,12); }
+  txtO('◇ HULL INTEGRITY',bx,bbY-5,9,COL.text,'left','Orbitron');
   // shield pips trail the label
   for(let s=0;s<(player.shields||0);s++){ ctx.save(); glow(COL.accent,4); ctx.fillStyle=COL.accent; ctx.fillRect(bx+102+s*9,bbY-10,6,6); noGlow(); ctx.restore(); }
   const hf=Math.max(0,player.hp/stats.maxHp);
   hudBar(bx,bbY,bw,12,hf,hf>0.3?COL.health:COL.gunner,20);
-  txt(Math.ceil(player.hp)+' / '+stats.maxHp,W/2,bbY+9,10,COL.text,'center');
+  txtO(Math.ceil(player.hp)+' / '+stats.maxHp,W/2,bbY+9,10,'#ffffff','center');
 
   // ── bottom edge: XP scan-rail ────────────────────────────
   const xf=Math.max(0,Math.min(1,player.xp/player.xpNext));
-  txt('XP',104,H-5,8,COL.dim,'right','Orbitron');
+  txtO('XP',104,H-5,8,COL.text,'right','Orbitron');
   ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(118,H-9,W-238,4);
   ctx.save(); glow('#38e8ff',4); ctx.fillStyle='#38e8ff'; ctx.fillRect(118,H-9,(W-238)*xf,4); noGlow(); ctx.restore();
-  txt('RANK '+player.rank,W-12,H-12,11,COL.accent,'right'); chevrons(W-88,H-7,2,COL.accent,3,-1);
+  txtO('RANK '+player.rank,W-12,H-12,11,COL.accent,'right'); chevrons(W-88,H-7,2,COL.accent,3,-1);
 }
 function drawActionButtons(){
   if(!player)return;

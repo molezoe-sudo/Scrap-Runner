@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.13';
+const VERSION = '0.9.14';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -2026,7 +2026,6 @@ function drawActionButtons(){
   btn('❚❚', W/2-32, H-80, 64, 30, ()=>{state='paused';}, { bg:'rgba(8,12,26,0.6)', border:COL.dim, fg:'#9fb8d8', size:14 });
 }
 
-function drawCenter(a,b){ ctx.fillStyle='rgba(5,7,15,0.7)'; ctx.fillRect(0,0,W,H); txt(a,W/2,H/2-6,38,COL.accent,'center','Orbitron'); txt(b,W/2,H/2+22,13,COL.dim,'center'); btn('RESUME',W/2-80,H/2+44,160,42,()=>state='playing'); }
 function drawPause(){
   ctx.fillStyle='rgba(5,7,15,0.9)'; ctx.fillRect(0,0,W,H);
   hudHeader('LOADOUT DOSSIER',46,'#38e8ff');
@@ -2081,6 +2080,7 @@ function drawMenu(){
   ctx.globalAlpha=1;
   ctx.save(); glow('#38e8ff',12); ctx.strokeStyle='#38e8ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W/2-150,150); ctx.lineTo(W/2+150,150); ctx.stroke(); noGlow(); ctx.restore();
   txt('EST. 2100 · SECTOR SALVAGE LICENCE',W/2,166,9,COL.dim,'center');
+  txt('v'+VERSION,W-10,H-6,8,'rgba(255,255,255,0.18)','right');   // ◇ was declared but never shown anywhere in-game
   // salvage — quiet currency readout, no frame
   ctx.fillStyle=COL.scrap; ctx.fillRect(W/2-66,189,9,9); txt(META.salvage+' SALVAGE',W/2-50,198,12,COL.scrap,'left','Orbitron');
   // live hull preview inside a reticle
@@ -2115,7 +2115,7 @@ function drawMenu(){
   btn('◆ RELICS',W/2+47,y,80,40,()=>{state='relics';},{size:10,fg:'#ff9bc8'});
   btn('◷ CAREER',W/2+131,y,80,40,()=>{state='stats';},{size:10,fg:'#c0a0ff'});
   y+=40;
-  txt('move WASD / drag   ·   special Space   ·   ability Shift',W/2,y+20,10,COL.dim,'center');
+  txt('move WASD / drag   ·   special Space   ·   ability Shift'+(Audio2.isMuted()?'   ·   🔇 muted (M)':''),W/2,y+20,10,COL.dim,'center');   // ◇ isMuted() was declared but never read anywhere
   y+=30;
   if(hiScore>0){ ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(W/2-110,y); ctx.lineTo(W/2+110,y); ctx.stroke(); txt('best  '+hiScore+'    ·    best level  '+(META.maxLevel||hiWave),W/2,y+20,12,COL.scrap,'center'); }
   if(performance.now()<konamiUntil){
@@ -2364,28 +2364,6 @@ function drawHangar(){
   btn('◀  BACK',W/2-70,H-44,140,34,()=>{state='menu';},{size:13,bg:'rgba(56,232,255,0.08)'});
 }
 function secHeader(label,y){ txt(label,W/2,y+11,10,COL.dim,'center'); return y+24; }
-function lockedNote(label,y){ ctx.fillStyle='rgba(255,255,255,0.025)'; ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; rr(24,y,W-48,28,6); ctx.fill(); ctx.stroke(); txt('🔒 '+label,W/2,y+18,10,COL.dim,'center'); return y+34; }
-function unlockRow(name,metaKey,costKey,y){
-  const owned=!!META.unlocks[metaKey], cost=UNLOCK_COST[costKey], can=!owned&&META.salvage>=cost;
-  ctx.fillStyle=owned?'rgba(92,226,138,0.08)':(can?'rgba(56,232,255,0.08)':'rgba(255,255,255,0.03)');
-  ctx.strokeStyle=owned?'rgba(92,226,138,0.4)':(can?'rgba(56,232,255,0.4)':'rgba(255,255,255,0.1)'); ctx.lineWidth=1;
-  rr(24,y,W-48,30,6); ctx.fill(); ctx.stroke();
-  if(!owned) uiButtons.push({x:24,y,w:W-48,h:30,action:()=>buyUnlock(costKey,metaKey)});
-  txt(name,36,y+19,11.5,owned?COL.health:COL.text);
-  txt(owned?'OWNED':(cost+' ▣'),W-36,y+19,12,owned?COL.health:(can?COL.scrap:COL.dim),'right');
-  return y+34;
-}
-function upgRow(u,y){
-  const lvl=META.upg[u.id]||0, maxed=lvl>=u.max, cost=u.cost(lvl), can=!maxed&&META.salvage>=cost;
-  ctx.fillStyle=maxed?'rgba(92,226,138,0.08)':(can?'rgba(56,232,255,0.08)':'rgba(255,255,255,0.03)');
-  ctx.strokeStyle=maxed?'rgba(92,226,138,0.4)':(can?'rgba(56,232,255,0.4)':'rgba(255,255,255,0.1)'); ctx.lineWidth=1;
-  rr(24,y,W-48,30,6); ctx.fill(); ctx.stroke();
-  if(!maxed) uiButtons.push({x:24,y,w:W-48,h:30,action:()=>buyMetaUpg(u)});
-  txt(u.name+(u.max>1?(' '+lvl+'/'+u.max):''),36,y+13,11.5,maxed?COL.health:COL.text);
-  txt(u.desc,36,y+25,8,COL.dim);
-  txt(maxed?'MAX':(cost+' ▣'),W-36,y+19,12,maxed?COL.health:(can?COL.scrap:COL.dim),'right');
-  return y+34;
-}
 
 /* ---------- codex / encyclopedia (discover by playing) -------------- */
 function codexEntry(seen,name,sub,rare,y){
@@ -2727,7 +2705,6 @@ const ABILITY_DESC={
   overdrive:'Overdrive — your drones fire in a frenzy for ~4s. Shift when swarmed.',
   vent:'Vent — spend all stored Overcharge in a Fracturing blast around you. Kills build Overcharge; Shift to unleash it.',
 };
-const ABILITY_SHORT={dash:'Dodge + brief i-frames (Shift)',brace:'Halve damage ~2s (Shift)',overdrive:'Drone frenzy ~4s (Shift)',vent:'Spend Overcharge: Fracturing blast (Shift)'};
 function setTxt(id,v){ const el=document.getElementById(id); if(el)el.textContent=v; }
 function setHtml(id,v){ const el=document.getElementById(id); if(el)el.innerHTML=v; }
 function updatePanels(){

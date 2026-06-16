@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.10';
+const VERSION = '0.9.11';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -316,20 +316,41 @@ const Audio2 = (() => {
   function vTone(t,freq,dur,type,vol,bend){ const o=ctx.createOscillator(),g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(freq,t); if(bend)o.frequency.exponentialRampToValueAtTime(bend,t+dur); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.02); }
   function vBass(t,midi,dur){ [0,-7].forEach(det=>{ const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter(); o.type='sawtooth'; o.detune.value=det; o.frequency.value=MIDI(midi); f.type='lowpass'; f.frequency.value=820; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(f); f.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.02); }); }
   function vPad(t,midis,dur){ midis.forEach(m=>[ -6,6].forEach(det=>{ const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter(); o.type='sawtooth'; o.detune.value=det; o.frequency.value=MIDI(m); f.type='lowpass'; f.frequency.value=1500; g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.05,t+0.4); g.gain.setValueAtTime(0.05,t+dur-0.3); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(f); f.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.05); })); }
-  // i–VI–VII–v loop in A minor — fully diatonic (Am, F, G, Em)
-  const CH=[ {root:45,tones:[45,48,52],pad:[57,60,64]},
-             {root:41,tones:[41,45,48],pad:[53,57,60]},
-             {root:43,tones:[43,47,50],pad:[55,59,62]},
-             {root:40,tones:[40,43,47],pad:[55,59,64]} ];
-  // lead hook: [absStep 0..63, midi, durSteps] — all notes within A natural minor
-  const LEAD=[ [0,69,2],[2,72,2],[4,76,2],[6,74,1],[7,72,1],[8,69,4],[14,67,2],
-               [16,65,2],[18,69,2],[20,72,3],[24,71,2],[26,72,2],[28,76,4],
-               [32,67,2],[34,71,2],[36,74,2],[38,72,1],[39,71,1],[40,67,4],[46,64,2],
-               [48,64,2],[50,67,2],[52,71,3],[56,72,2],[58,71,2],[60,69,4] ];
+  // ◇ pacing: was one 64-step (~6.3s) loop repeated forever — way too short to not feel
+  // repetitive within seconds. Three distinct songs now (same diatonic A-minor chord pool —
+  // Am/F/G/Em — reordered + a fresh lead hook each, so they're harmonically compatible but
+  // melodically different), each playing SONG_REPEATS times through before handing off to the
+  // next. Full macro-cycle before you hear the exact same combination again: 3 songs ×
+  // SONG_REPEATS loops × ~6.3s ≈ well over a minute, instead of ~6 seconds.
+  const SONGS=[
+    { // song 1 — the original drive theme: i–VI–VII–v
+      ch:[ {root:45,tones:[45,48,52],pad:[57,60,64]}, {root:41,tones:[41,45,48],pad:[53,57,60]},
+           {root:43,tones:[43,47,50],pad:[55,59,62]}, {root:40,tones:[40,43,47],pad:[55,59,64]} ],
+      lead:[ [0,69,2],[2,72,2],[4,76,2],[6,74,1],[7,72,1],[8,69,4],[14,67,2],
+              [16,65,2],[18,69,2],[20,72,3],[24,71,2],[26,72,2],[28,76,4],
+              [32,67,2],[34,71,2],[36,74,2],[38,72,1],[39,71,1],[40,67,4],[46,64,2],
+              [48,64,2],[50,67,2],[52,71,3],[56,72,2],[58,71,2],[60,69,4] ] },
+    { // song 2 — moodier reorder: v–i–VI–VII, sustained lead
+      ch:[ {root:40,tones:[40,43,47],pad:[55,59,64]}, {root:45,tones:[45,48,52],pad:[57,60,64]},
+           {root:41,tones:[41,45,48],pad:[53,57,60]}, {root:43,tones:[43,47,50],pad:[55,59,62]} ],
+      lead:[ [0,64,4],[6,67,2],[8,71,2],[10,72,2],[12,71,1],[13,69,1],[16,67,4],[22,64,2],
+              [24,62,2],[26,64,2],[28,67,3],[32,69,2],[34,72,2],[36,76,4],
+              [42,72,2],[44,69,2],[46,67,2],[48,67,1],[49,69,1],[50,71,3],[56,72,2],[58,74,2],[60,72,4] ] },
+    { // song 3 — tenser reorder: VII–v–i–VI, low-register syncopated lead
+      ch:[ {root:43,tones:[43,47,50],pad:[55,59,62]}, {root:40,tones:[40,43,47],pad:[55,59,64]},
+           {root:45,tones:[45,48,52],pad:[57,60,64]}, {root:41,tones:[41,45,48],pad:[53,57,60]} ],
+      lead:[ [0,55,1],[1,57,1],[2,59,2],[6,60,2],[8,62,1],[9,64,1],[10,55,4],[16,57,2],[18,59,2],
+              [20,60,3],[24,62,2],[26,64,2],[28,67,2],[30,64,1],[31,62,1],[32,55,4],[40,57,2],
+              [42,59,2],[44,60,2],[48,62,4],[54,64,2],[56,67,2],[58,64,2],[60,60,4] ] },
+  ];
+  const SONG_REPEATS=4;   // ◇ tune freely — loops of one song before rotating to the next
+  let songIdx=0, songLoops=0;
   let mTimer=null, mStep=0, mNext=0, boss=false; const BPM=152, SPB=60/BPM/4;
   function schedule(){ if(!ctx)return; try{ boss = (typeof enemies!=='undefined') && enemies.some(e=>!e.dead&&e.boss); }catch(_){ boss=false; }
     while(mNext < ctx.currentTime+0.12){
-      const s=mStep%64, bar=Math.floor(s/16), st=s%16, ch=CH[bar];
+      const s=mStep%64, bar=Math.floor(s/16), st=s%16;
+      if(s===0 && mStep>0){ songLoops++; if(songLoops>=SONG_REPEATS){ songLoops=0; songIdx=(songIdx+1)%SONGS.length; } }
+      const song=SONGS[songIdx], ch=song.ch[bar], LEAD=song.lead;
       if(st===0||st===8||(boss&&st===14)) vKick(mNext);
       if(st===4||st===12) vSnare(mNext);
       vHat(mNext, st%4===2); if(boss&&st%2===1) vHat(mNext,false);
@@ -348,7 +369,7 @@ const Audio2 = (() => {
     siren(){ if(muted||!ctx)return; for(let k=0;k<2;k++){ setTimeout(()=>{ blip(440,0.45,'sawtooth',0.05,860); }, k*480); } },
     warn(){ blip(330,0.10,'square',0.05,247); },
     bossBoom(){ noise(0.5,0.12); blip(90,0.5,'triangle',0.06,30); setTimeout(()=>{noise(0.3,0.08);blip(70,0.35,'sawtooth',0.05,28);},180); },
-    musicStart(){ ensure(); if(!ctx||mTimer)return; mStep=0; mNext=ctx.currentTime+0.1; mTimer=setInterval(schedule,25); },
+    musicStart(){ ensure(); if(!ctx||mTimer)return; mStep=0; songIdx=0; songLoops=0; mNext=ctx.currentTime+0.1; mTimer=setInterval(schedule,25); },
     musicStop(){ if(mTimer){clearInterval(mTimer); mTimer=null;} } };
 })();
 
@@ -1988,15 +2009,16 @@ function drawMenu(){
   y=selector('HULL', HULLS[hullKeys[selH]], 'hull', hullKeys[selH], y, ()=>{selH=(selH+hullKeys.length-1)%hullKeys.length;}, ()=>{selH=(selH+1)%hullKeys.length;});
   y=selector('PRIMARY', PRIMARIES[primKeys[selP]], 'primary', primKeys[selP], y+16, ()=>{selP=(selP+primKeys.length-1)%primKeys.length;}, ()=>{selP=(selP+1)%primKeys.length;});
   y=selector('SPECIAL', SPECIALS[specKeys[selS]], 'special', specKeys[selS], y+16, ()=>{selS=(selS+specKeys.length-1)%specKeys.length;}, ()=>{selS=(selS+1)%specKeys.length;});
-  y+=14;
+  y+=24;   // clear gap below the last blurb line — was a negative offset back toward it (only ~2px clearance), now a real margin
   const maxSS=Math.max(1,Math.floor((META.maxLevel||0)/5)+1);
   if(startSector>maxSS)startSector=maxSS;
   if(maxSS>1){
-    btn('◂',W/2-104,y-12,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
-    txt('START · SECTOR '+startSector+'  (level '+((startSector-1)*5+1)+')',W/2,y+4,11,startSector>1?COL.heat:COL.dim,'center');
-    btn('▸',W/2+74,y-12,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
-  } else { txt('survive deeper to unlock a higher start sector',W/2,y+2,9,COL.dim,'center'); }
-  y+=30;
+    btn('◂',W/2-104,y,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+    txt('START · SECTOR '+startSector+'  (level '+((startSector-1)*5+1)+')',W/2,y+16,11,startSector>1?COL.heat:COL.dim,'center');
+    btn('▸',W/2+74,y,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+    y+=24;
+  } else { txt('survive deeper to unlock a higher start sector',W/2,y+10,9,COL.dim,'center'); y+=20; }
+  y+=16;
   const locked=!isUnlocked('hull',hullKeys[selH])||!isUnlocked('primary',primKeys[selP])||!isUnlocked('special',specKeys[selS]);
   if(locked) btn('🔒 LOCKED — VISIT HANGAR',W/2-130,y,260,46,()=>{state='hangar';},{size:13,bg:'rgba(255,84,112,0.10)',border:COL.gunner,fg:COL.gunner});
   else btn('▶  LAUNCH',W/2-130,y,260,46,launch,{size:18,primary:true});
@@ -2455,7 +2477,11 @@ function drawDraft(){
   ctx.fillStyle='rgba(5,7,15,0.88)'; ctx.fillRect(0,0,W,H);
   const rank=draftMode==='rank', accent=rank?'#c77dff':'#ffae3b';
   const n=Math.max(1,draftOffer.length);
-  const px=20, py=46, pw=W-40, ph=H-104;
+  // ◇ readability: card height is sized to its actual content (was stretched to fill the
+  // whole outer panel, leaving a huge dead gap below short descriptions) — panel is sized
+  // to wrap snugly around header+cards+footer instead, then centred vertically
+  const headerH=98, cardH=180, footerGap=24, footerH=38, footerPad=16;
+  const px=20, pw=W-40, ph=headerH+cardH+footerGap+footerH+footerPad, py=Math.round((H-ph)/2);
 
   ctx.save(); glow(accent,14); ctx.fillStyle='rgba(8,12,26,0.92)'; ctx.strokeStyle=accent; ctx.lineWidth=1.6;
   cutRect(px,py,pw,ph,16); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
@@ -2471,7 +2497,7 @@ function drawDraft(){
   txt((rank?'RANK '+(player?player.rank:1):'WAVE REWARD')+'  ·  '+n+' cards  ·  reroll ◎'+rerollCost, W/2, py+78, 10, COL.dim,'center');
   ctx.fillStyle=COL.scrap; ctx.fillRect(px+pw-58,py+15,7,7); txt(String(scrap),px+pw-46,py+22,11,COL.scrap,'left');
 
-  const gap=10, padX=18, cardTop=py+98, cardH=ph-98-64, cw=(pw-2*padX-(n-1)*gap)/n;
+  const gap=10, padX=18, cardTop=py+headerH, cw=(pw-2*padX-(n-1)*gap)/n;
   for(let i=0;i<n;i++){
     const m=draftOffer[i]; if(!m)continue;
     const owned=modCount(m.id), cap=m.max||5, col=rarCol(m.rarity), cx=px+padX+i*(cw+gap), cy=cardTop;
@@ -2479,18 +2505,18 @@ function drawDraft(){
     ctx.fillStyle=grad; ctx.strokeStyle=col; ctx.lineWidth=1.5; if(owned>0) glow(col,8);
     cutRect(cx,cy,cw,cardH,12); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
     uiButtons.push({x:cx,y:cy,w:cw,h:cardH,action:()=>takeMod(m)});
-    drawModIcon(cx+cw/2,cy+30,15,col);
+    drawModIcon(cx+cw/2,cy+30,17,col);
     txt(m.name.toUpperCase()+(owned>0?(' ×'+owned):''), cx+cw/2,cy+62,Math.min(12,10+(n<=3?1:0)),'#e8eefc','center','Orbitron');
     txt(rarName(m.rarity).toUpperCase()+' · MOD', cx+cw/2,cy+76,8.5,col,'center','Orbitron');
-    wrap(m.desc(owned+1), cx+10, cy+96, cw-20, 11, COL.dim);
-    if(cap>1) txt('stacks to '+cap, cx+cw-10, cy+cardH-8, 8, COL.dim,'right');
+    wrap(m.desc(owned+1), cx+10, cy+94, cw-20, 12, '#9fb0cf', 10);
+    if(cap>1) txt('stacks to '+cap, cx+cw-10, cy+cardH-10, 8, COL.dim,'right');
   }
 
   const fy=py+ph-46;
   btn(scrap>=rerollCost?('↻ REROLL ◎'+rerollCost):'↻ REROLL', W/2-150, fy, 140, 38, reroll, { bg:'rgba(255,255,255,0.05)', border:scrap>=rerollCost?accent:COL.dim, fg:scrap>=rerollCost?COL.text:COL.dim, size:12 });
   btn('SKIP →', W/2+10, fy, 140, 38, skipDraft, { bg:'rgba(92,226,138,0.14)', border:COL.health, fg:COL.health, size:13 });
 }
-function wrap(s,x,y,maxw,lh,col){ ctx.font='13px "Share Tech Mono", monospace'; ctx.fillStyle=col; ctx.textAlign='left'; const words=s.split(' '); let line='',yy=y; for(const w of words){ const t=line+w+' '; if(ctx.measureText(t).width>maxw){ ctx.fillText(line,x,yy); line=w+' '; yy+=lh; } else line=t; } ctx.fillText(line,x,yy); }
+function wrap(s,x,y,maxw,lh,col,sz){ ctx.font=`${sz||13}px "Share Tech Mono", monospace`; ctx.fillStyle=col; ctx.textAlign='left'; const words=s.split(' '); let line='',yy=y; for(const w of words){ const t=line+w+' '; if(ctx.measureText(t).width>maxw){ ctx.fillText(line,x,yy); line=w+' '; yy+=lh; } else line=t; } ctx.fillText(line,x,yy); return yy; }
 
 const SRC_COL={primary:'#38e8ff',special:'#c77dff',reaction:'#ff2da0',dot:'#ff8c42',ability:'#ff7849'};
 const TYPE_COL={kinetic:'#ffd166',thermal:'#ff8c42',shock:'#7aa2ff',cryo:'#aef0ff',explosive:'#ff5470'};

@@ -291,7 +291,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.8';
+const VERSION = '0.9.10';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -361,8 +361,14 @@ function resize(){
   const panelW = window.innerWidth>=1280 ? 672 : 0;   // reserve room for the two side panels
   const s=Math.min((window.innerWidth-24-panelW)/W,(window.innerHeight-16)/H);
   canvas.style.width=Math.floor(W*s)+'px'; canvas.style.height=Math.floor(H*s)+'px';
-  canvas.width=Math.floor(W*dpr); canvas.height=Math.floor(H*dpr);
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  // ◇ readability: buffer resolution must track the *displayed* size (W*s), not just dpr —
+  // it was sized as W*dpr alone, so whenever the canvas was shown larger than its native
+  // 640×720 (s>1, the common case), the browser stretched an undersized buffer and every
+  // bit of canvas text came out soft next to the crisp DOM sidebar UI. Cap the combined
+  // scale to bound worst-case buffer size on very large/4K displays.
+  const scale=Math.min(s*dpr,3);
+  canvas.width=Math.floor(W*scale); canvas.height=Math.floor(H*scale);
+  ctx.setTransform(scale,0,0,scale,0,0);
 }
 window.addEventListener('resize',resize); resize();
 function toggleFS(){ const el=document.documentElement; try{ if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); } else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); } }catch(e){} }
@@ -472,7 +478,7 @@ const PRIMARIES = {
                blurb:'A close-range cryo shotgun — a freezing cone that Chills everything it touches.' },
   missilepod:{ name:'Missile Pod',   kind:'missile', dmg:10, interval:0.5,  count:2, speed:540, r:5, blast:50, blastDmg:14, type:'thermal', source:'base',
                blurb:'Twin incendiary rockets — burst on impact for splash damage and set foes alight.' },
-  mortar:    { name:'Mortar Lobber', kind:'bomb',    dmg:14, interval:0.95, count:1, speed:300, r:7, blast:76, blastDmg:30, type:'thermal', source:'base',
+  mortar:    { name:'Mortar Lobber', kind:'bomb',    dmg:14, interval:0.95, count:1, speed:300, r:7, blast:76, blastDmg:30, range:300, type:'thermal', source:'base',
                blurb:'A slow, heavy firebomb with a wide, devastating blast that leaves enemies Burning.' },
   seekerpod: { name:'Hunter Seekers',kind:'homing',  dmg:8,  interval:0.46, count:2, speed:460, r:5, blast:40, blastDmg:11, type:'thermal', source:'base',
                blurb:'Smart incendiary missiles that bank toward the nearest threat, then detonate in flame.' },
@@ -538,53 +544,63 @@ const RARITY = {
 function rarCol(r){ return (RARITY[r]||RARITY.C).col; }
 function rarName(r){ return (RARITY[r]||RARITY.C).name; }
 
+// ◇ readability: desc is a function of n (the count you'd have AFTER taking this pick),
+// so a draft card always states the true cumulative effect — not a static first-copy string
+// that stays the same on every re-pick. Stats stack the same way recompute() actually stacks
+// them (maxHp/pierce/chains additive, everything else multiplicative — see recompute()), and
+// chance/status rules describe the real mechanic: buildRules() pushes a stacked mod's rules
+// once per copy, so e.g. 2× a 25%-chance effect is two independent rolls, not one roll at 50%;
+// and only burning/fractured/chilled actually stack (cap 5) — marked/shocked don't, so extra
+// copies of a marked/shocked-applying mod buy nothing beyond reliability.
+function pctStr(mult){ const p=Math.round((mult-1)*100); return (p>=0?'+':'')+p+'%'; }
+function ratePctStr(fireMult){ const p=Math.round((1/fireMult-1)*100); return (p>=0?'+':'')+p+'%'; }
 // --- mods (the draft pool seed) ---
 //   stats: passive stat modifiers.  rules: behaviour.  Both optional.
 const MODS = [
   // status engines
-  { id:'accelerant', name:'Accelerant', rarity:'C', source:'base', desc:'Thermal hits add an extra Burning stack.',
+  { id:'accelerant', name:'Accelerant', rarity:'C', source:'base', desc:n=>`Thermal hits add ${n} Burning stack${n>1?'s':''} (cap 5).`,
     rules:[ { on:'onHit', if:c=>c.type==='thermal', do:c=>applyStatus(c.target,'burning',1,3) } ] },
-  { id:'pyroclasm', name:'Pyroclasm', rarity:'E', source:'base', desc:'Killing a Burning foe detonates it.',
+  { id:'pyroclasm', name:'Pyroclasm', rarity:'E', source:'base', desc:n=>`Killing a Burning foe detonates it for ${30*n} explosive damage to nearby foes.`,
     rules:[ { on:'onKill', if:c=>c.burning, do:c=>{ for(const e of enemies){ if(dist2(e,c.target)<70*70) damageEnemy(e,30,'explosive'); } burst(c.target.x,c.target.y,COL.burning,14,180); } } ] },
-  { id:'conductor', name:'Conductor', rarity:'C', source:'base', desc:'Witchlight chains +1 hop.', stats:{chains:+1} },
-  { id:'rebar', name:'Rebar', rarity:'C', source:'base', desc:'Kinetic hits apply Fractured.',
+  { id:'conductor', name:'Conductor', rarity:'C', source:'base', desc:n=>`Witchlight chains +${n} hop${n>1?'s':''}.`, stats:{chains:+1} },
+  { id:'rebar', name:'Rebar', rarity:'C', source:'base', desc:n=>`Kinetic hits add ${n} Fractured stack${n>1?'s':''} (cap 5).`,
     rules:[ { on:'onHit', if:c=>c.type==='kinetic', do:c=>applyStatus(c.target,'fractured',1,5) } ] },
-  { id:'cryorounds', name:'Cryostatic Rounds', rarity:'R', source:'base', desc:'Hits have a 22% chance to Chill (slow) the target.',
+  { id:'cryorounds', name:'Cryostatic Rounds', rarity:'R', source:'base', desc:n=>'22% chance per hit to add a Chill stack.'+(n>1?` ×${n} — up to ${Math.min(n,5)} stacks if every roll lands.`:''),
     rules:[ { on:'onHit', do:c=>{ if(Math.random()<0.22) applyStatus(c.target,'chilled',1,3.2); } } ] },
-  { id:'shatterpoint', name:'Shatterpoint', rarity:'E', source:'base', desc:'Fully-Fractured foes take +50% damage.',
+  { id:'shatterpoint', name:'Shatterpoint', rarity:'E', source:'base', desc:()=>'Fully-Fractured foes take +50% damage.',
     flag:'shatterpoint', max:1 },
-  { id:'huntersmark', name:"Hunter's Mark", rarity:'C', source:'base', desc:'Crits apply Marked.',
+  { id:'huntersmark', name:"Hunter's Mark", rarity:'C', source:'base', desc:n=>'Crits apply Marked (4s).'+(n>1?' Marked doesn’t stack — extra copies add nothing.':''),
     rules:[ { on:'onCrit', do:c=>applyStatus(c.target,'marked',0,4) } ] },
-  { id:'executioner', name:'Executioner', rarity:'R', source:'base', desc:'Killing a Marked foe refunds Charge.',
+  { id:'executioner', name:'Executioner', rarity:'R', source:'base', desc:n=>`Killing a Marked foe refunds ${18*n} Charge.`,
     rules:[ { on:'onKill', if:c=>c.marked, do:()=>grantCharge(18) } ] },
   // primary
-  { id:'overbore', name:'Overbore', rarity:'C', source:'base', desc:'+25% damage, −10% fire rate.', stats:{damageMult:1.25, fireMult:1.1} },
-  { id:'hollow', name:'Hollow Rounds', rarity:'C', source:'base', desc:'+1 pierce.', stats:{pierce:+1} },
-  { id:'hairtrigger', name:'Hairtrigger', rarity:'C', source:'base', desc:'+20% fire rate, −10% damage.', stats:{fireMult:0.83, damageMult:0.9} },
+  { id:'overbore', name:'Overbore', rarity:'C', source:'base', desc:n=>`${pctStr(Math.pow(1.25,n))} damage, ${ratePctStr(Math.pow(1.1,n))} fire rate.`, stats:{damageMult:1.25, fireMult:1.1} },
+  { id:'hollow', name:'Hollow Rounds', rarity:'C', source:'base', desc:n=>`+${n} pierce.`, stats:{pierce:+1} },
+  { id:'hairtrigger', name:'Hairtrigger', rarity:'C', source:'base', desc:n=>`${ratePctStr(Math.pow(0.83,n))} fire rate, ${pctStr(Math.pow(0.9,n))} damage.`, stats:{fireMult:0.83, damageMult:0.9} },
   // bridging (the synergy gold)
-  { id:'afterburn', name:'Afterburn', rarity:'R', source:'base', desc:'Firing your special boosts fire rate for 3s.', max:1,
+  { id:'afterburn', name:'Afterburn', rarity:'R', source:'base', desc:()=>'Firing your special boosts fire rate for 3s.', max:1,
     rules:[ { on:'onSpecialFired', do:()=>{ player.fireBuff=3; } } ] },
   // economy / defence
-  { id:'hoarder', name:"Hoarder's Instinct", rarity:'C', source:'base', desc:'+50% scrap from pickups.', stats:{scrapMult:1.5}, max:3 },
-  { id:'wreck', name:'Wreck Harvest', rarity:'R', source:'base', desc:'Kills sometimes drop extra scrap.',
+  { id:'hoarder', name:"Hoarder's Instinct", rarity:'C', source:'base', desc:n=>`${pctStr(Math.pow(1.5,n))} scrap from pickups.`, stats:{scrapMult:1.5}, max:3 },
+  { id:'wreck', name:'Wreck Harvest', rarity:'R', source:'base', desc:n=>'35% chance per kill to drop bonus scrap.'+(n>1?` ×${n} — ${n} independent rolls per kill.`:''),
     rules:[ { on:'onKill', do:c=>{ if(Math.random()<0.35) pickups.push(mkPickup(c.target.x,c.target.y,'scrap')); } } ] },
-  { id:'ablative', name:'Ablative Plating', rarity:'C', source:'base', desc:'+25 max Integrity.', stats:{maxHp:+25} },
-  { id:'damper', name:'Kinetic Dampener', rarity:'C', source:'base', desc:'−15% hitbox.', stats:{hitboxMult:0.85}, max:3 },
+  { id:'ablative', name:'Ablative Plating', rarity:'C', source:'base', desc:n=>`+${25*n} max Integrity.`, stats:{maxHp:+25} },
+  { id:'damper', name:'Kinetic Dampener', rarity:'C', source:'base', desc:n=>`${pctStr(Math.pow(0.85,n))} hitbox size.`, stats:{hitboxMult:0.85}, max:3 },
   // status spreaders — these light up the reaction system
-  { id:'voltaic', name:'Voltaic Coil', rarity:'R', source:'base', desc:'Hits have a chance to apply Shocked.',
+  { id:'voltaic', name:'Voltaic Coil', rarity:'R', source:'base', desc:n=>'18% chance per hit to apply Shocked.'+(n>1?` Shocked doesn’t stack — extra copies just add independent rolls (×${n}), not a bigger effect.`:''),
     rules:[ { on:'onHit', do:c=>{ if(Math.random()<0.18) applyStatus(c.target,'shocked',0,2); } } ] },
-  { id:'emberkiss', name:'Ember Kiss', rarity:'C', source:'base', desc:'Crits apply Burning.',
+  { id:'emberkiss', name:'Ember Kiss', rarity:'C', source:'base', desc:n=>`Crits add ${n} Burning stack${n>1?'s':''} (cap 5).`,
     rules:[ { on:'onCrit', do:c=>applyStatus(c.target,'burning',1,3) } ] },
-  { id:'siphon', name:'Siphon', rarity:'R', source:'base', desc:'Kills sometimes repair 4 Integrity.',
+  { id:'siphon', name:'Siphon', rarity:'R', source:'base', desc:n=>'25% chance per kill to repair 4 Integrity.'+(n>1?` ×${n} — up to ${4*n} if all ${n} rolls land.`:''),
     rules:[ { on:'onKill', do:()=>{ if(Math.random()<0.25 && player) player.hp=Math.min(stats.maxHp, player.hp+4); } } ] },
   // epic
-  { id:'apex', name:'Apex Rounds', rarity:'E', source:'base', desc:'+40% primary damage.', stats:{damageMult:1.4}, max:3 },
+  { id:'apex', name:'Apex Rounds', rarity:'E', source:'base', desc:n=>`${pctStr(Math.pow(1.4,n))} primary damage.`, stats:{damageMult:1.4}, max:3 },
   // legendary
-  { id:'glasscannon', name:'Glass Cannon', rarity:'L', source:'base', desc:'+85% damage, but −30 max Integrity.', stats:{damageMult:1.85, maxHp:-30}, max:2 },
-  { id:'choireternal', name:'The Choir Eternal', rarity:'L', proto:true, source:'base', desc:'Kills grant Charge; may drop scrap.',
+  { id:'glasscannon', name:'Glass Cannon', rarity:'L', source:'base', desc:n=>`${pctStr(Math.pow(1.85,n))} damage, but ${-30*n} max Integrity.`, stats:{damageMult:1.85, maxHp:-30}, max:2 },
+  { id:'choireternal', name:'The Choir Eternal', rarity:'L', proto:true, source:'base', desc:n=>`Kills grant ${4*n} Charge; each kill also rolls a separate 50% chance per copy to drop scrap (${n} roll${n>1?'s':''}).`,
     rules:[ { on:'onKill', do:c=>{ grantCharge(4); if(Math.random()<0.5) pickups.push(mkPickup(c.target.x,c.target.y,'scrap')); } } ] },
   // mythic — build-defining
-  { id:'omnimark', name:'Omnimark', rarity:'M', source:'base', desc:'Crits apply Marked, Fractured AND Burning — fuels every reaction.',
+  { id:'omnimark', name:'Omnimark', rarity:'M', source:'base', desc:()=>'Crits apply Marked, Fractured AND Burning — fuels every reaction.',
     rules:[ { on:'onCrit', do:c=>{ applyStatus(c.target,'marked',0,4); applyStatus(c.target,'fractured',1,5); applyStatus(c.target,'burning',1,3); } } ], max:1 },
 ];
 
@@ -918,6 +934,7 @@ function hasStatus(e,k){ return e.status && e.status[k] && e.status[k].t>0; }
 // low-level damage. applyTags=false for DoT ticks so they don't refresh statuses.
 function damageEnemy(e, amount, type, applyTags=true, fromPrimary=false, continuous=false){
   if(e.dead) return;
+  if(e.intro) return;   // ◇ fairness: invulnerable while still entering — fully on screen and not yet firing before it can be hit
   let mult=1;
   if(hasStatus(e,'fractured')){ const st=e.status.fractured.stacks; mult+=st*0.08; if(stats.shatterpoint&&st>=5)mult+=0.5; }
   if(hasStatus(e,'marked')) mult+=0.25;                      // Marked visibly takes more
@@ -961,7 +978,7 @@ function killEnemy(e){
   if(e.boss||e.champion){ bossDeathFx=e.champion?1.0:1.7; bossDeathX=e.x; bossDeathY=e.y; bossDeathCol=e.col; Audio2.bossBoom(); shake=e.champion?16:26; flash=e.champion?0.5:0.8;
     spawnDebris(e.x,e.y,e.col,e.champion?16:26); spawnDebris(e.x,e.y,'#ffae3b',e.champion?8:14); }
   else if(e.elite){ spawnDebris(e.x,e.y,'#ffd166',6); }
-  score+=e.score; addScrap(e.scrap); gainXp(e.xp!=null?e.xp:(e.boss?40:5));
+  score+=e.score; addScrap(e.scrap); gainXp((e.xp!=null?e.xp:(e.boss?40:5))*XP_MULT);
   if(e.boss && wave>=50){ const cg=1+Math.floor((wave-50)/15)+(META.upg.coremag||0); coresEarned+=cg; floaters.push({x:e.x,y:e.y-20,vy:-40,life:1.8,max:1.8,text:'+'+cg+' ◆ CORE',crit:true,col:'#ff2da0'}); }
   const c={ target:e, burning:hasStatus(e,'burning'), marked:hasStatus(e,'marked'), shocked:hasStatus(e,'shocked') };
   if(relicIs('ashenheart') && c.burning){ const pv=dmgSrc; dmgSrc='dot'; for(const o of enemies){ if(o!==e&&!o.dead&&dist2(o,e)<80*80) applyStatus(o,'burning',2,3); } dmgSrc=pv; burst(e.x,e.y,COL.burning,16,200); }
@@ -1028,7 +1045,7 @@ function startWave(){
   wave++; waveActive=true; spawnQueue=[];
   if(wave%10===0){ bossWarn=2.0; pendingMini=false; Audio2.siren(); return; }   // big boss every 10
   if(wave%5===0){ bossWarn=1.5; pendingMini=true;  Audio2.siren(); return; }    // mini-boss champion every 5
-  const count=5+wave*2;
+  const count=(5+wave*2)*3;   // ◇ balance: 3× enemies/wave, paired with XP_MULT=1/3 above — same staggered per-spawn delay below, so a wave just takes ~3× longer rather than feeling rushed
   const pool=['drifter'];
   if(wave>=2){ pool.push('weaver','swarmling','swarmling'); }
   if(wave>=3){ pool.push('gunner','tank'); }
@@ -1051,7 +1068,7 @@ function spawnMiniBoss(){
   const hp=(t.hp*4+240)*(1+(tier-1)*0.32);
   const e={ type, ai:t.ai, champion:true, mini:true, name:t.name.toUpperCase()+' CHAMPION', x:W/2, y:-50, r:t.r*1.8,
     hp, maxHp:hp, speed:t.speed*0.85, score:2200*tier, scrap:42+tier*16, xp:30+tier*10, col:t.col,
-    fire:1, phase:0, baseX:W/2, hitFlash:0, status:{}, dead:false };
+    fire:1, phase:0, baseX:W/2, hitFlash:0, status:{}, dead:false, intro:true };
   if(type==='mimic') e.copies=true;
   enemies.push(e);
 }
@@ -1130,6 +1147,9 @@ function update(dt){
   if(bossDeathFx>0){ bossDeathFx-=dt;
     if(Math.random()<0.5){ const x=bossDeathX+(Math.random()-0.5)*120, y=bossDeathY+(Math.random()-0.5)*90; burst(x,y,Math.random()<0.5?'#ffae3b':bossDeathCol,12,220); shake=Math.max(shake,9); if(Math.random()<0.4)Audio2.explode(); }
     dt*=0.4;                                                    // slow-mo
+    // ◇ pacing: the kill that ends the death-fx may have crossed a rank — gainXp() deferred
+    // opening the draft until the scene finished playing out; pick it up here now that it has
+    if(bossDeathFx<=0 && pendingDrafts>0){ Audio2.charged(); spawnFloat(player.x,player.y-16,'RANK UP',true); openDraft('rank'); }
   }
   // low-integrity alarm + vignette
   if(player){ const hf=player.hp/stats.maxHp;
@@ -1176,7 +1196,7 @@ function update(dt){
 
   // spawn
   if(spawnQueue.length){ spawnTimer-=dt; if(spawnTimer<=0){ spawnEnemy(spawnQueue.shift()); spawnTimer=spawnQueue.length?spawnQueue[0].delay:0; } }
-  else if(waveActive && enemies.length===0 && bossWarn<=0 && bossDeathFx<=0){
+  else if(state==='playing' && waveActive && enemies.length===0 && bossWarn<=0 && bossDeathFx<=0){   // ◇ pacing: state guard — don't clobber a rank-up draft that opened earlier this same frame
     waveActive=false;
     if(wave%5===0) setBgTheme(Math.floor(wave/5));            // new stage backdrop after each boss
     openDraft('wave');
@@ -1225,8 +1245,9 @@ function firePrimary(dt){
     } else if(prim.kind==='missile'||prim.kind==='bomb'||prim.kind==='homing'){
       const dmg=prim.dmg*stats.damageMult*ocMul, n=prim.count||1;
       for(let i=0;i<n;i++){ const off=(i-(n-1)/2)*16;
-        pBullets.push({ x:player.x+off, y:player.y-12, vx:(prim.kind==='homing'?(off*4):0), vy:-(prim.speed||520), r:prim.r||5, dmg, type:(prim.type||'thermal'), pierce:0,
-          missile:true, kind:prim.kind, home:(prim.kind==='homing'?2.2:0), explode:{r:prim.blast||52, dmg:prim.blastDmg!=null?prim.blastDmg*stats.damageMult*ocMul:dmg, type:(prim.type||'thermal')}, trail:[] }); }
+        pBullets.push({ x:player.x+off, y:player.y-12, oy:player.y-12, vx:(prim.kind==='homing'?(off*4):0), vy:-(prim.speed||520), r:prim.r||5, dmg, type:(prim.type||'thermal'), pierce:0,
+          missile:true, kind:prim.kind, home:(prim.kind==='homing'?2.2:0), range:(prim.kind==='bomb'?(prim.range||300):0),
+          explode:{r:prim.blast||52, dmg:prim.blastDmg!=null?prim.blastDmg*stats.damageMult*ocMul:dmg, type:(prim.type||'thermal')}, trail:[] }); }
       RUN.shots+=n;
     } else {
       const pierce=stats.pierce+ocPierce+(prim.pierceBonus||0), dmg=prim.dmg*stats.damageMult*ocMul, sp=620;
@@ -1284,6 +1305,7 @@ function updateEnemies(dt){
     if(e.hitFlash>0)e.hitFlash-=dt;
     if(e.shieldFlash>0)e.shieldFlash-=dt; if(e.shieldBroke>0)e.shieldBroke-=dt;
     if(e.boss){ updateBoss(e,dt); continue; }
+    if(e.intro){ e.y+=55*dt; if(e.y>=90){ e.y=90; e.intro=false; } continue; }   // ◇ fairness: champion entry — descend in, no firing, no collision until fully on screen
     let slow=hasStatus(e,'shocked')?0.5:1;
     if(hasStatus(e,'chilled') && !relicIs('brittlecold')) slow*=Math.max(0.25, 1 - e.status.chilled.stacks*0.14);
     if(e.frozen>0){ e.frozen-=dt; }
@@ -1341,6 +1363,9 @@ function updateBullets(dt){
     b.x+=b.vx*dt; b.y+=b.vy*dt;
     if(b.trail){ b.trail.push(b.x,b.y); if(b.trail.length>10)b.trail.splice(0,2); }
     if(b.y<-14||b.x<-20||b.x>W+20){ pBullets.splice(i,1); continue; }
+    // ◇ design: a lobbed bomb (Mortar) has a fuse — it detonates at its max range even
+    // without a direct hit, instead of silently flying off-screen like a missile that whiffed
+    if(b.range>0 && Math.abs(b.y-b.oy)>=b.range){ explodeBullet(b); pBullets.splice(i,1); continue; }
     if(!b.hit)b.hit=[];
     let detonated=false;
     for(const e of enemies){ if(e.dead||b.hit.indexOf(e)>=0)continue; if(hit(b,e)){ b.hit.push(e); RUN.hits++;
@@ -1455,11 +1480,12 @@ function takeMod(m){ build.mods.push(m.id); discover('mod',m.id); buildRules(); 
 function skipDraft(){ resolveDraft(); }
 function reroll(){ if(scrap<rerollCost)return; scrap-=rerollCost; rerollCost=Math.round(rerollCost*1.6); draftOffer=pickN(availMods(),3+(META.upg.extradraft||0)); }
 function nextWave(){ state='playing'; if(player) player.inv=Math.max(player.inv,1.2); startWave(); }
+const XP_MULT=1/3;   // ◇ balance: enemies give 1/3 the xp — paired with 3× enemies/wave below so a wave takes ~3× longer to clear without changing overall rank-up pace, so the level-clear reward feels earned rather than instant
 function xpForRank(r){ return Math.round(20*Math.pow(1.36, r-1)); }   // ◇ balance: steeper late-rank wall — r1 unchanged (still 20), growth 1.28→1.36 so each successive rank costs noticeably more
 function gainXp(n){
   if(!player) return; player.xp+=n;
   while(player.xp>=player.xpNext){ player.xp-=player.xpNext; player.rank++; player.xpNext=xpForRank(player.rank); pendingDrafts++; }
-  if(pendingDrafts>0 && state==='playing'){ Audio2.charged(); spawnFloat(player.x,player.y-16,'RANK UP',true); openDraft('rank'); }
+  if(pendingDrafts>0 && state==='playing' && bossDeathFx<=0){ Audio2.charged(); spawnFloat(player.x,player.y-16,'RANK UP',true); openDraft('rank'); }   // ◇ pacing: if a death-fx scene is playing, defer — the bossDeathFx tick picks this up once it ends
 }
 
 /* =====================================================================
@@ -1474,7 +1500,11 @@ function initSprites(){
     const vb=sym.getAttribute('viewBox')||'0 0 64 64';
     const parts=vb.split(' ');
     const w=parts[2]||64, h=parts[3]||64;
-    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}">${sym.innerHTML}</svg>`;
+    // ◇ fix: weapon_* glyphs are drawn on stroke="currentColor" by design (so they can be
+    // tinted per host context) — with no inherited CSS colour in this standalone wrapper,
+    // currentColor resolved to black, i.e. invisible on the dark UI. Bake a white default in;
+    // draw call(s) recolour it via the source-atop tint trick (see drawTintedSprite()).
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}" color="#ffffff">${sym.innerHTML}</svg>`;
     const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
     SPRITE_CACHE[id]=img;
   });
@@ -1741,6 +1771,9 @@ function txtO(s,x,y,sz,c,al='left',f='Share Tech Mono'){ ctx.save(); ctx.textAli
   ctx.fillStyle=c; ctx.fillText(s,x,y); ctx.restore(); }
 function glow(col,b){ ctx.shadowColor=col; ctx.shadowBlur=b; }
 function noGlow(){ ctx.shadowBlur=0; ctx.shadowColor='transparent'; }
+// recolour a cached white mono-line glyph (weapon_* sprites) to a per-instance tint —
+// source-atop keeps the glyph's own alpha shape, just swaps the colour under it
+function drawTintedSprite(spr,x,y,w,h,col){ ctx.drawImage(spr,x,y,w,h); ctx.save(); ctx.globalCompositeOperation='source-atop'; ctx.fillStyle=col; ctx.fillRect(x,y,w,h); ctx.restore(); }
 function neon(s,x,y,sz,c,al='center',f='Orbitron',b=18){ ctx.save(); glow(c,b); txt(s,x,y,sz,c,al,f); glow(c,b*0.6); txt(s,x,y,sz,c,al,f); noGlow(); txt(s,x,y,sz,'#ffffff',al,f); ctx.restore(); }
 function drawFrame(){
   // edge scrims — fade the play-field under the HUD bands so bullets/enemies can't bleed over the readouts
@@ -1948,27 +1981,37 @@ function drawMenu(){
   // live hull preview inside a reticle
   reticle(W/2,228,28,'rgba(56,232,255,0.45)',time*0.3);
   ctx.save(); ctx.translate(W/2,228); ctx.scale(1.55,1.55); drawHullSprite(hullKeys[selH],0,0); ctx.restore();
-  selector('HULL', HULLS[hullKeys[selH]], 'hull', hullKeys[selH], 254, ()=>{selH=(selH+hullKeys.length-1)%hullKeys.length;}, ()=>{selH=(selH+1)%hullKeys.length;});
-  selector('PRIMARY', PRIMARIES[primKeys[selP]], 'primary', primKeys[selP], 332, ()=>{selP=(selP+primKeys.length-1)%primKeys.length;}, ()=>{selP=(selP+1)%primKeys.length;});
-  selector('SPECIAL', SPECIALS[specKeys[selS]], 'special', specKeys[selS], 410, ()=>{selS=(selS+specKeys.length-1)%specKeys.length;}, ()=>{selS=(selS+1)%specKeys.length;});
+  // ◇ layout: each selector's blurb can wrap to 2 lines (longest is 86 chars) — drive every
+  // row off the actual rendered height of the one before it instead of fixed magic-number
+  // offsets, or a long blurb collides with whatever comes next (was the messy-text bug).
+  let y=254;
+  y=selector('HULL', HULLS[hullKeys[selH]], 'hull', hullKeys[selH], y, ()=>{selH=(selH+hullKeys.length-1)%hullKeys.length;}, ()=>{selH=(selH+1)%hullKeys.length;});
+  y=selector('PRIMARY', PRIMARIES[primKeys[selP]], 'primary', primKeys[selP], y+16, ()=>{selP=(selP+primKeys.length-1)%primKeys.length;}, ()=>{selP=(selP+1)%primKeys.length;});
+  y=selector('SPECIAL', SPECIALS[specKeys[selS]], 'special', specKeys[selS], y+16, ()=>{selS=(selS+specKeys.length-1)%specKeys.length;}, ()=>{selS=(selS+1)%specKeys.length;});
+  y+=14;
   const maxSS=Math.max(1,Math.floor((META.maxLevel||0)/5)+1);
   if(startSector>maxSS)startSector=maxSS;
   if(maxSS>1){
-    btn('◂',W/2-104,470,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
-    txt('START · SECTOR '+startSector+'  (level '+((startSector-1)*5+1)+')',W/2,486,11,startSector>1?COL.heat:COL.dim,'center');
-    btn('▸',W/2+74,470,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
-  } else { txt('survive deeper to unlock a higher start sector',W/2,484,9,COL.dim,'center'); }
+    btn('◂',W/2-104,y-12,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+    txt('START · SECTOR '+startSector+'  (level '+((startSector-1)*5+1)+')',W/2,y+4,11,startSector>1?COL.heat:COL.dim,'center');
+    btn('▸',W/2+74,y-12,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+  } else { txt('survive deeper to unlock a higher start sector',W/2,y+2,9,COL.dim,'center'); }
+  y+=30;
   const locked=!isUnlocked('hull',hullKeys[selH])||!isUnlocked('primary',primKeys[selP])||!isUnlocked('special',specKeys[selS]);
-  if(locked) btn('🔒 LOCKED — VISIT HANGAR',W/2-130,500,260,46,()=>{state='hangar';},{size:13,bg:'rgba(255,84,112,0.10)',border:COL.gunner,fg:COL.gunner});
-  else btn('▶  LAUNCH',W/2-130,500,260,46,launch,{size:18,primary:true});
-  if(META.equippedRelic){ const er=RELICS.find(r=>r.id===META.equippedRelic); if(er) txt('◆ relic socketed: '+er.name,W/2,538,10,er.col,'center','Orbitron'); }
-  btn('⚙ HANGAR',W/2-205,556,80,40,()=>{hangarScroll=0;hangarTab=0;openDrawer=null;drawerT=0;state='hangar';},{size:10,fg:'#9fb8d8'});
-  btn('◈ DOCK',W/2-121,556,80,40,()=>{hangarScroll=0;dockSlot=null;state='drydock';},{size:10,fg:'#9fb8d8'});
-  btn('📖 CODEX',W/2-37,556,80,40,()=>{hangarScroll=0;state='codex';},{size:10,fg:'#9fb8d8'});
-  btn('◆ RELICS',W/2+47,556,80,40,()=>{state='relics';},{size:10,fg:'#ff9bc8'});
-  btn('◷ CAREER',W/2+131,556,80,40,()=>{state='stats';},{size:10,fg:'#c0a0ff'});
-  txt('move WASD / drag   ·   special Space   ·   ability Shift',W/2,616,10,COL.dim,'center');
-  if(hiScore>0){ ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(W/2-110,634); ctx.lineTo(W/2+110,634); ctx.stroke(); txt('best  '+hiScore+'    ·    best level  '+(META.maxLevel||hiWave),W/2,654,12,COL.scrap,'center'); }
+  if(locked) btn('🔒 LOCKED — VISIT HANGAR',W/2-130,y,260,46,()=>{state='hangar';},{size:13,bg:'rgba(255,84,112,0.10)',border:COL.gunner,fg:COL.gunner});
+  else btn('▶  LAUNCH',W/2-130,y,260,46,launch,{size:18,primary:true});
+  y+=46;
+  if(META.equippedRelic){ const er=RELICS.find(r=>r.id===META.equippedRelic); if(er) txt('◆ relic socketed: '+er.name,W/2,y+16,10,er.col,'center','Orbitron'); }
+  y+=24;
+  btn('⚙ HANGAR',W/2-205,y,80,40,()=>{hangarScroll=0;hangarTab=0;openDrawer=null;drawerT=0;state='hangar';},{size:10,fg:'#9fb8d8'});
+  btn('◈ DOCK',W/2-121,y,80,40,()=>{hangarScroll=0;dockSlot=null;state='drydock';},{size:10,fg:'#9fb8d8'});
+  btn('📖 CODEX',W/2-37,y,80,40,()=>{hangarScroll=0;state='codex';},{size:10,fg:'#9fb8d8'});
+  btn('◆ RELICS',W/2+47,y,80,40,()=>{state='relics';},{size:10,fg:'#ff9bc8'});
+  btn('◷ CAREER',W/2+131,y,80,40,()=>{state='stats';},{size:10,fg:'#c0a0ff'});
+  y+=40;
+  txt('move WASD / drag   ·   special Space   ·   ability Shift',W/2,y+20,10,COL.dim,'center');
+  y+=30;
+  if(hiScore>0){ ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(W/2-110,y); ctx.lineTo(W/2+110,y); ctx.stroke(); txt('best  '+hiScore+'    ·    best level  '+(META.maxLevel||hiWave),W/2,y+20,12,COL.scrap,'center'); }
   if(performance.now()<konamiUntil){
     const t=Math.min(1,(konamiUntil-performance.now())/4000*2); ctx.save(); ctx.globalAlpha=t;
     const bw=372,bh=44,bx=W/2-bw/2,by=12;
@@ -1978,6 +2021,16 @@ function drawMenu(){
     ctx.restore();
   }
 }
+// ◇ readability: centred multi-line wrap — returns the y after the last line so callers can
+// flow the next element below it instead of guessing a fixed offset for variable-length text
+function wrapCenter(s,cx,y,maxw,lh,col,sz,font){
+  ctx.font=`${sz}px "${font||'Share Tech Mono'}", monospace`; ctx.fillStyle=col; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  const words=s.split(' '); const lines=[]; let line='';
+  for(const w of words){ const t=line?line+' '+w:w; if(line && ctx.measureText(t).width>maxw){ lines.push(line); line=w; } else line=t; }
+  if(line) lines.push(line);
+  for(let i=0;i<lines.length;i++) ctx.fillText(lines[i], cx, y+i*lh);
+  return y+(lines.length-1)*lh;
+}
 function selector(label,obj,kind,key,top,left,right){
   const unlocked=isUnlocked(kind,key);
   const bx=W/2-104, bw=208, boxY=top+15, bh=38;
@@ -1986,8 +2039,14 @@ function selector(label,obj,kind,key,top,left,right){
   btn('▶', bx+bw+8, boxY, 38, bh, right, {size:16});
   panel2(bx,boxY,bw,bh,{col:unlocked?'#38e8ff':COL.gunner, fill:unlocked?'rgba(56,232,255,0.06)':'rgba(255,84,112,0.06)'});
   chevrons(bx+16,boxY+bh/2,2,unlocked?'#2f5675':'#7a3a48',3,1); chevrons(bx+bw-16,boxY+bh/2,2,unlocked?'#2f5675':'#7a3a48',3,-1);
-  txt((unlocked?'':'🔒 ')+obj.name, W/2, boxY+bh/2+5, 15, unlocked?COL.text:COL.gunner, 'center');
-  txt(unlocked?obj.blurb:('locked — '+(UNLOCK_COST[key]||'?')+' salvage'), W/2, boxY+bh+15, 9.5, COL.dim, 'center');
+  const wSpr=(unlocked&&kind==='primary')?SPRITE_CACHE['weapon_'+key]:null;
+  if(wSpr && wSpr.complete && wSpr.naturalWidth){
+    drawTintedSprite(wSpr, bx+26, boxY+8, 22, 22, TYPE_COL[obj.type]||COL.accent);
+    txt(obj.name, bx+56, boxY+bh/2+5, 15, COL.text, 'left');
+  } else {
+    txt((unlocked?'':'🔒 ')+obj.name, W/2, boxY+bh/2+5, 15, unlocked?COL.text:COL.gunner, 'center');
+  }
+  return wrapCenter(unlocked?obj.blurb:('locked — '+(UNLOCK_COST[key]||'?')+' salvage'), W/2, boxY+bh+15, 460, 13, COL.dim, 9.5);
 }
 
 function screenSpace(accent){ accent=accent||'#38e8ff';
@@ -2220,7 +2279,7 @@ function drawCodex(){
   y=codexSection('HULLS','hull', hullKeys.map(k=>({id:k,name:HULLS[k].name,sub:HULLS[k].blurb})), y);
   y=codexSection('PRIMARY WEAPONS','primary', primKeys.map(k=>({id:k,name:PRIMARIES[k].name,sub:PRIMARIES[k].blurb})), y);
   y=codexSection('SPECIAL WEAPONS','special', specKeys.map(k=>({id:k,name:SPECIALS[k].name,sub:SPECIALS[k].blurb})), y);
-  y=codexSection('MODS','mod', MODS.map(m=>({id:m.id,name:m.name,sub:m.desc,rare:rarCol(m.rarity)})), y);
+  y=codexSection('MODS','mod', MODS.map(m=>({id:m.id,name:m.name,sub:m.desc(1),rare:rarCol(m.rarity)})), y);
   y=codexSection('REACTIONS','reaction', REACTIONS.map(R=>({id:R.name,name:R.name,sub:R.desc,rare:R.col})), y);
   y=secHeader('— STATUS EFFECTS · 5/5 —',y);
   const STATDEF=[['Burning','Damage over time (thermal source).','#ff8c42'],['Shocked','Slowed; Witchlight chains between Shocked foes.','#7aa2ff'],['Marked','Takes +25% damage from all sources.','#ffd166'],['Fractured','Armour stripped; +damage, stacks to 5.','#ff5470'],['Chilled','Slows; stacks toward a hard freeze.','#aef0ff']];
@@ -2382,26 +2441,54 @@ function drawDockBay(slot){
   btn('◀  SYSTEMS',W/2-70,H-44,140,34,()=>{dockSlot=null;},{size:13});
 }
 
+// ◇ design handoff: notched 3(+)-card grid per Scrap Runner HUD.dc.html "Draft Screen" —
+// previously a vertical list of bars; this is the mocked-up layout (eyebrow + title, rarity-
+// framed notched cards w/ icon·name·rarity·desc, notched reroll/skip footer).
+function drawModIcon(cx,cy,r,col){
+  ctx.save(); ctx.translate(cx,cy); glow(col,7); ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(r*0.62,0); ctx.lineTo(0,r); ctx.lineTo(-r*0.62,0); ctx.closePath();
+  ctx.globalAlpha=0.18; ctx.fillStyle=col; ctx.fill(); ctx.globalAlpha=1; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-r*0.48); ctx.lineTo(r*0.3,0); ctx.lineTo(0,r*0.48); ctx.lineTo(-r*0.3,0); ctx.closePath(); ctx.stroke();
+  noGlow(); ctx.restore();
+}
 function drawDraft(){
-  ctx.fillStyle='rgba(5,7,15,0.85)'; ctx.fillRect(0,0,W,H);
-  const rank = draftMode==='rank';
-  neon(rank?('RANK '+(player?player.rank:1)+' — CHOOSE'):('LEVEL '+wave+' CLEARED'), W/2, 80, 22, rank?'#38e8ff':'#ffae3b','center','Orbitron',14);
-  ctx.fillStyle=COL.scrap; ctx.fillRect(W/2-46,94,10,10); txt(scrap+' scrap',W/2-30,103,14,COL.scrap);
-  txt(rank?'— rank reward · pick one —':'— wave reward · better odds —',W/2,140,12,COL.dim,'center');
-  let y=160;
-  for(const m of draftOffer){
-    const owned=modCount(m.id), cap=m.max||5, col=rarCol(m.rarity);
-    ctx.save(); glow(col, m.rarity==='M'||m.rarity==='L'?10:0);
-    ctx.fillStyle='rgba(56,232,255,0.05)'; ctx.strokeStyle=col; ctx.lineWidth=1.5; rr(30,y,W-60,86,10); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
-    uiButtons.push({x:30,y,w:W-60,h:86,action:()=>takeMod(m)});
-    ctx.fillStyle=col; ctx.fillRect(42,y+16,8,8);
-    txt(m.name+(owned>0?('  ×'+owned):''),58,y+26,16,COL.text); txt(rarName(m.rarity),W-42,y+26,10,col,'right');
-    wrap(m.desc,42,y+50,W-200,13,COL.dim);
-    if(cap>1) txt('stacks to '+cap,W-42,y+72,9,COL.dim,'right');
-    y+=98;
+  ctx.fillStyle='rgba(5,7,15,0.88)'; ctx.fillRect(0,0,W,H);
+  const rank=draftMode==='rank', accent=rank?'#c77dff':'#ffae3b';
+  const n=Math.max(1,draftOffer.length);
+  const px=20, py=46, pw=W-40, ph=H-104;
+
+  ctx.save(); glow(accent,14); ctx.fillStyle='rgba(8,12,26,0.92)'; ctx.strokeStyle=accent; ctx.lineWidth=1.6;
+  cutRect(px,py,pw,ph,16); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
+  ctx.save(); ctx.beginPath(); cutRect(px,py,pw,ph,16); ctx.clip(); ctx.globalAlpha=0.05; ctx.fillStyle=accent;
+  for(let yy=py; yy<py+ph; yy+=4) ctx.fillRect(px,yy,pw,1); ctx.restore();
+  ctx.save(); ctx.strokeStyle=accent; ctx.globalAlpha=0.5; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(px+14,py+30); ctx.lineTo(px+14,py+14); ctx.lineTo(px+30,py+14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px+pw-30,py+14); ctx.lineTo(px+pw-14,py+14); ctx.lineTo(px+pw-14,py+30); ctx.stroke();
+  ctx.globalAlpha=1; ctx.restore();
+
+  txt(rank?'◇ LEVEL UP ◇':'◇ WAVE CLEAR ◇', W/2, py+30, 11, accent, 'center','Orbitron');
+  neon(rank?'CHOOSE AN UPGRADE':('LEVEL '+wave+' CLEARED'), W/2, py+58, 21, '#e8eefc','center','Orbitron',10);
+  txt((rank?'RANK '+(player?player.rank:1):'WAVE REWARD')+'  ·  '+n+' cards  ·  reroll ◎'+rerollCost, W/2, py+78, 10, COL.dim,'center');
+  ctx.fillStyle=COL.scrap; ctx.fillRect(px+pw-58,py+15,7,7); txt(String(scrap),px+pw-46,py+22,11,COL.scrap,'left');
+
+  const gap=10, padX=18, cardTop=py+98, cardH=ph-98-64, cw=(pw-2*padX-(n-1)*gap)/n;
+  for(let i=0;i<n;i++){
+    const m=draftOffer[i]; if(!m)continue;
+    const owned=modCount(m.id), cap=m.max||5, col=rarCol(m.rarity), cx=px+padX+i*(cw+gap), cy=cardTop;
+    ctx.save(); const grad=ctx.createLinearGradient(0,cy,0,cy+cardH); grad.addColorStop(0,col+'33'); grad.addColorStop(1,'rgba(8,12,26,0.6)');
+    ctx.fillStyle=grad; ctx.strokeStyle=col; ctx.lineWidth=1.5; if(owned>0) glow(col,8);
+    cutRect(cx,cy,cw,cardH,12); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
+    uiButtons.push({x:cx,y:cy,w:cw,h:cardH,action:()=>takeMod(m)});
+    drawModIcon(cx+cw/2,cy+30,15,col);
+    txt(m.name.toUpperCase()+(owned>0?(' ×'+owned):''), cx+cw/2,cy+62,Math.min(12,10+(n<=3?1:0)),'#e8eefc','center','Orbitron');
+    txt(rarName(m.rarity).toUpperCase()+' · MOD', cx+cw/2,cy+76,8.5,col,'center','Orbitron');
+    wrap(m.desc(owned+1), cx+10, cy+96, cw-20, 11, COL.dim);
+    if(cap>1) txt('stacks to '+cap, cx+cw-10, cy+cardH-8, 8, COL.dim,'right');
   }
-  btn(scrap>=rerollCost?('↻ REROLL ('+rerollCost+')'):'↻ REROLL', W/2-150, y+4, 140, 42, reroll, { bg:'rgba(255,255,255,0.05)', border:scrap>=rerollCost?COL.accent:COL.dim, fg:scrap>=rerollCost?COL.text:COL.dim, size:13 });
-  btn('SKIP ▶', W/2+10, y+4, 140, 42, skipDraft, { bg:'rgba(92,226,138,0.14)', border:COL.health, fg:COL.health, size:14 });
+
+  const fy=py+ph-46;
+  btn(scrap>=rerollCost?('↻ REROLL ◎'+rerollCost):'↻ REROLL', W/2-150, fy, 140, 38, reroll, { bg:'rgba(255,255,255,0.05)', border:scrap>=rerollCost?accent:COL.dim, fg:scrap>=rerollCost?COL.text:COL.dim, size:12 });
+  btn('SKIP →', W/2+10, fy, 140, 38, skipDraft, { bg:'rgba(92,226,138,0.14)', border:COL.health, fg:COL.health, size:13 });
 }
 function wrap(s,x,y,maxw,lh,col){ ctx.font='13px "Share Tech Mono", monospace'; ctx.fillStyle=col; ctx.textAlign='left'; const words=s.split(' '); let line='',yy=y; for(const w of words){ const t=line+w+' '; if(ctx.measureText(t).width>maxw){ ctx.fillText(line,x,yy); line=w+' '; yy+=lh; } else line=t; } ctx.fillText(line,x,yy); }
 

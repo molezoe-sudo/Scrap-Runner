@@ -306,7 +306,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.15';
+const VERSION = '0.9.16';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -1897,9 +1897,21 @@ function txtO(s,x,y,sz,c,al='left',f='Share Tech Mono'){ ctx.save(); ctx.textAli
   ctx.fillStyle=c; ctx.fillText(s,x,y); ctx.restore(); }
 function glow(col,b){ ctx.shadowColor=col; ctx.shadowBlur=b; }
 function noGlow(){ ctx.shadowBlur=0; ctx.shadowColor='transparent'; }
-// recolour a cached white mono-line glyph (weapon_* sprites) to a per-instance tint —
-// source-atop keeps the glyph's own alpha shape, just swaps the colour under it
-function drawTintedSprite(spr,x,y,w,h,col){ ctx.drawImage(spr,x,y,w,h); ctx.save(); ctx.globalCompositeOperation='source-atop'; ctx.fillStyle=col; ctx.fillRect(x,y,w,h); ctx.restore(); }
+// recolour a cached white mono-line glyph (weapon_* sprites) to a per-instance tint.
+// ◇ fix: must isolate the composite on an offscreen canvas — doing source-atop straight on
+// the main ctx tints against the WHOLE frame already drawn (the opaque panel behind it), so
+// it painted a solid colour block instead of just the glyph. Tint offscreen, then blit.
+const _tintCv=document.createElement('canvas'); const _tintCx=_tintCv.getContext('2d');
+function drawTintedSprite(spr,x,y,w,h,col){
+  const pw=Math.ceil(w*3), ph=Math.ceil(h*3);   // 3× supersample so the thin lines stay sharp
+  _tintCv.width=pw; _tintCv.height=ph;
+  _tintCx.clearRect(0,0,pw,ph);
+  _tintCx.drawImage(spr,0,0,pw,ph);
+  _tintCx.globalCompositeOperation='source-in';   // fill only where the glyph has alpha
+  _tintCx.fillStyle=col; _tintCx.fillRect(0,0,pw,ph);
+  _tintCx.globalCompositeOperation='source-over';
+  ctx.drawImage(_tintCv,x,y,w,h);
+}
 function neon(s,x,y,sz,c,al='center',f='Orbitron',b=18){ ctx.save(); glow(c,b); txt(s,x,y,sz,c,al,f); glow(c,b*0.6); txt(s,x,y,sz,c,al,f); noGlow(); txt(s,x,y,sz,'#ffffff',al,f); ctx.restore(); }
 function drawFrame(){
   // edge scrims — fade the play-field under the HUD bands so bullets/enemies can't bleed over the readouts

@@ -346,7 +346,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.18';
+const VERSION = '0.9.19';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -2392,7 +2392,12 @@ function armCard(kind,key,obj,y){
   const owned=isUnlocked(kind,key), cost=UNLOCK_COST[key], can=!owned&&META.salvage>=(cost||1e9), ch=54;
   panel2(24,y,W-48,ch,{col:owned?'#5ce28a':'#38e8ff', acc:owned?'#5ce28a':'#ff2da0', greeble:false, fill:owned?'rgba(92,226,138,0.06)':'rgba(56,232,255,0.05)'});
   ctx.strokeStyle='rgba(56,232,255,0.22)'; ctx.lineWidth=1; cutRect(34,y+9,40,40,7); ctx.stroke();
-  drawWeaponGlyph(kind,obj,54,y+27);
+  // ◇ real sprite art: weapon glyph (tinted by damage type) for primaries, special glyph for specials
+  const wSpr=kind==='primary'?SPRITE_CACHE['weapon_'+key]:SPRITE_CACHE['special_'+key];
+  if(wSpr && wSpr.complete && wSpr.naturalWidth){
+    if(kind==='primary') drawTintedSprite(wSpr, 54-13, y+29-13, 26, 26, TYPE_COL[obj.type]||COL.accent);
+    else ctx.drawImage(wSpr, 54-14, y+29-14, 28, 28);
+  } else drawWeaponGlyph(kind,obj,54,y+27);
   txt(obj.name,86,y+22,13,owned?COL.health:COL.text,'left');
   txt(obj.blurb,86,y+38,8.5,COL.dim);
   if(!owned){ uiButtons.push({x:24,y,w:W-48,h:ch,action:()=>buyUnlock(key,kind+'_'+key)}); txt((cost||'?')+' ▣',W-38,y+30,12,can?COL.scrap:COL.dim,'right'); }

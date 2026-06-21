@@ -116,6 +116,7 @@
   .sr-seg-on  { background:var(--sr-health); box-shadow:0 0 5px var(--sr-health); }
   .sr-seg-off { background:rgba(255,255,255,0.07); }
   .sr-icon { width:32px; height:32px; display:inline-block; }
+  .sr-ic { width:18px; height:18px; display:inline-block; vertical-align:middle; margin-right:7px; flex:none; }
 </style>
 </head>
 <body>
@@ -132,7 +133,8 @@
     <div class="blk">
       <div class="h">Controls</div>
       <div class="row"><span>Move</span><b>WASD / drag</b></div>
-      <div class="row"><span>Fire</span><b>automatic</b></div>
+      <div class="row" id="ctlFireRow" style="cursor:pointer" title="Click or press T to toggle"><span>Fire (T)</span><b id="ctlFire">automatic</b></div>
+      <div class="row"><span>Manual fire</span><b>hold click / J</b></div>
       <div class="row"><span>Special</span><b>Space</b></div>
       <div class="row"><span>Ability</span><b>Shift</b></div>
       <div class="row"><span>Pause / Mute</span><b>P / M</b></div>
@@ -258,11 +260,11 @@
     <div class="rod m"></div>
     <div class="blk">
       <div class="h">Status effects</div>
-      <div class="li"><span class="sw" style="background:#ff8c42"></span>Burning — damage over time</div>
-      <div class="li"><span class="sw" style="background:#7aa2ff"></span>Shocked — slowed, chains</div>
-      <div class="li"><span class="sw" style="background:#ffd166"></span>Marked — takes extra damage</div>
-      <div class="li"><span class="sw" style="background:#ff5470"></span>Fractured — armour stripped</div>
-      <div class="li"><span class="sw" style="background:#aef0ff"></span>Chilled — slowed; stacks toward freeze</div>
+      <div class="li"><svg class="sr-ic"><use href="#status_burning"/></svg>Burning — damage over time</div>
+      <div class="li"><svg class="sr-ic"><use href="#status_shocked"/></svg>Shocked — slowed, chains</div>
+      <div class="li"><svg class="sr-ic"><use href="#status_marked"/></svg>Marked — takes extra damage</div>
+      <div class="li"><svg class="sr-ic"><use href="#status_fractured"/></svg>Fractured — armour stripped</div>
+      <div class="li"><svg class="sr-ic"><use href="#status_chilled"/></svg>Chilled — slowed; stacks toward freeze</div>
     </div>
     <div class="rod m"></div>
     <div class="blk rx">
@@ -281,10 +283,12 @@
     <div class="rod m"></div>
     <div class="blk">
       <div class="h">Pickups</div>
-      <div class="li"><span class="sw" style="background:#ffd166"></span>Scrap — currency</div>
-      <div class="li"><span class="sw" style="background:#5ce28a"></span>Repair — restore hull</div>
-      <div class="li"><span class="sw" style="background:#c77dff;border-radius:50%"></span>Overcharge Cell</div>
-      <div class="li"><span class="sw" style="background:#ff7849;border-radius:50%"></span>Frenzy Cell</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_scrap"/></svg>Scrap — currency</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_health"/></svg>Repair — restore hull</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_pu_charge"/></svg>Overcharge Cell — ×4 charge gain</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_pu_frenzy"/></svg>Frenzy Cell — rapid fire</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_wreckage"/></svg>Wreckage — +1 Overcharge stack</div>
+      <div class="li"><svg class="sr-ic"><use href="#pickup_pu_orbital"/></svg>Orbital — deploy a drone</div>
     </div>
     <div class="ptel"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="pftr"><span>SIGNAL</span><span>SECTOR ●</span></div>
@@ -306,7 +310,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.9.16';
+const VERSION = '0.9.17';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -331,49 +335,64 @@ const Audio2 = (() => {
   function vTone(t,freq,dur,type,vol,bend){ const o=ctx.createOscillator(),g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(freq,t); if(bend)o.frequency.exponentialRampToValueAtTime(bend,t+dur); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.02); }
   function vBass(t,midi,dur){ [0,-7].forEach(det=>{ const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter(); o.type='sawtooth'; o.detune.value=det; o.frequency.value=MIDI(midi); f.type='lowpass'; f.frequency.value=820; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(f); f.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.02); }); }
   function vPad(t,midis,dur){ midis.forEach(m=>[ -6,6].forEach(det=>{ const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter(); o.type='sawtooth'; o.detune.value=det; o.frequency.value=MIDI(m); f.type='lowpass'; f.frequency.value=1500; g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.05,t+0.4); g.gain.setValueAtTime(0.05,t+dur-0.3); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(f); f.connect(g); g.connect(musicBus); o.start(t); o.stop(t+dur+0.05); })); }
-  // ◇ pacing: was one 64-step (~6.3s) loop repeated forever — way too short to not feel
-  // repetitive within seconds. Three distinct songs now (same diatonic A-minor chord pool —
-  // Am/F/G/Em — reordered + a fresh lead hook each, so they're harmonically compatible but
-  // melodically different), each playing SONG_REPEATS times through before handing off to the
-  // next. Full macro-cycle before you hear the exact same combination again: 3 songs ×
-  // SONG_REPEATS loops × ~6.3s ≈ well over a minute, instead of ~6 seconds.
+  // ◇ music rewrite: the old "3 songs" were just reorders of the SAME 4-chord pool (Am/F/G/Em),
+  // so the bass+arp — the loudest voices — sounded identical no matter which song was playing.
+  // That's the "same 4 notes, never progresses" feel. Now each combat song is a real 8-bar
+  // progression with genuine harmonic motion (adds C / Dm / E), so the bassline itself moves
+  // through 8 distinct bars before repeating. Plus a separate grand menu theme.
+  // Chord triad shorthand (A natural minor + borrowed E major as the V):
+  const CH_=( ()=>{ const C={
+    Am:{root:45,tones:[45,48,52],pad:[57,60,64]}, F:{root:41,tones:[41,45,48],pad:[53,57,60]},
+    C:{root:48,tones:[48,52,55],pad:[60,64,67]},  G:{root:43,tones:[43,47,50],pad:[55,59,62]},
+    Dm:{root:50,tones:[50,53,57],pad:[62,65,69]}, Em:{root:40,tones:[40,43,47],pad:[52,55,59]},
+    E:{root:40,tones:[40,44,47],pad:[52,56,59]} }; return C; })();
+  const P=(...names)=>names.map(n=>CH_[n]);
   const SONGS=[
-    { // song 1 — the original drive theme: i–VI–VII–v
-      ch:[ {root:45,tones:[45,48,52],pad:[57,60,64]}, {root:41,tones:[41,45,48],pad:[53,57,60]},
-           {root:43,tones:[43,47,50],pad:[55,59,62]}, {root:40,tones:[40,43,47],pad:[55,59,64]} ],
-      lead:[ [0,69,2],[2,72,2],[4,76,2],[6,74,1],[7,72,1],[8,69,4],[14,67,2],
-              [16,65,2],[18,69,2],[20,72,3],[24,71,2],[26,72,2],[28,76,4],
-              [32,67,2],[34,71,2],[36,74,2],[38,72,1],[39,71,1],[40,67,4],[46,64,2],
-              [48,64,2],[50,67,2],[52,71,3],[56,72,2],[58,71,2],[60,69,4] ] },
-    { // song 2 — moodier reorder: v–i–VI–VII, sustained lead
-      ch:[ {root:40,tones:[40,43,47],pad:[55,59,64]}, {root:45,tones:[45,48,52],pad:[57,60,64]},
-           {root:41,tones:[41,45,48],pad:[53,57,60]}, {root:43,tones:[43,47,50],pad:[55,59,62]} ],
-      lead:[ [0,64,4],[6,67,2],[8,71,2],[10,72,2],[12,71,1],[13,69,1],[16,67,4],[22,64,2],
-              [24,62,2],[26,64,2],[28,67,3],[32,69,2],[34,72,2],[36,76,4],
-              [42,72,2],[44,69,2],[46,67,2],[48,67,1],[49,69,1],[50,71,3],[56,72,2],[58,74,2],[60,72,4] ] },
-    { // song 3 — tenser reorder: VII–v–i–VI, low-register syncopated lead
-      ch:[ {root:43,tones:[43,47,50],pad:[55,59,62]}, {root:40,tones:[40,43,47],pad:[55,59,64]},
-           {root:45,tones:[45,48,52],pad:[57,60,64]}, {root:41,tones:[41,45,48],pad:[53,57,60]} ],
-      lead:[ [0,55,1],[1,57,1],[2,59,2],[6,60,2],[8,62,1],[9,64,1],[10,55,4],[16,57,2],[18,59,2],
-              [20,60,3],[24,62,2],[26,64,2],[28,67,2],[30,64,1],[31,62,1],[32,55,4],[40,57,2],
-              [42,59,2],[44,60,2],[48,62,4],[54,64,2],[56,67,2],[58,64,2],[60,60,4] ] },
+    { // drive — i VI III VII | i VI iv V
+      ch:P('Am','F','C','G','Am','F','Dm','E'),
+      lead:[[0,69,2],[2,72,2],[4,76,3],[8,74,2],[10,72,2],[12,69,3],[16,65,2],[18,69,2],[20,72,3],[24,76,4],
+            [32,67,2],[34,72,2],[36,71,2],[40,69,4],[48,69,2],[50,72,2],[52,74,3],[56,72,2],[58,71,1],[59,69,1],[60,67,4],
+            [64,72,2],[68,76,3],[72,74,2],[76,72,2],[80,71,2],[84,69,3],[88,67,2],[92,69,2],[96,72,3],[104,76,4],[112,74,2],[116,72,2],[120,69,4]] },
+    { // climb — i III VI VII | v VI III V
+      ch:P('Am','C','F','G','Em','F','C','E'),
+      lead:[[0,64,4],[6,67,2],[8,71,2],[10,72,3],[16,76,2],[18,72,2],[20,71,3],[24,67,2],[26,69,2],[28,72,4],
+            [32,71,2],[34,67,2],[36,64,3],[40,67,2],[42,71,2],[44,72,3],[48,74,2],[50,71,2],[52,67,4],[60,76,4],
+            [64,72,2],[66,76,3],[72,79,2],[74,76,2],[80,74,3],[88,71,2],[90,72,2],[92,76,4],[104,74,3],[112,71,2],[116,67,2],[120,64,4]] },
+    { // tense — iv i VI III | iv i V V
+      ch:P('Dm','Am','F','C','Dm','Am','E','E'),
+      lead:[[0,57,2],[2,60,2],[4,62,3],[8,65,2],[10,62,2],[12,60,3],[16,57,2],[18,60,2],[20,64,4],
+            [32,65,2],[34,62,2],[36,60,3],[40,57,4],[48,52,2],[50,56,2],[52,59,3],[56,56,2],[58,52,2],[60,52,4],
+            [64,57,2],[68,60,3],[72,62,2],[76,60,2],[80,65,3],[88,62,2],[92,60,2],[96,57,4],[104,64,3],[112,59,2],[116,56,2],[120,52,4]] },
   ];
-  const SONG_REPEATS=4;   // ◇ tune freely — loops of one song before rotating to the next
-  let songIdx=0, songLoops=0;
-  let mTimer=null, mStep=0, mNext=0, boss=false; const BPM=152, SPB=60/BPM/4;
-  function schedule(){ if(!ctx)return; try{ boss = (typeof enemies!=='undefined') && enemies.some(e=>!e.dead&&e.boss); }catch(_){ boss=false; }
+  // ◇ menu theme — slower-feeling, pad-led and grand; soaring lead, no snare drive.
+  const MENU_SONG={ ch:P('Am','F','C','G','Dm','Am','E','Am'),
+    lead:[[0,69,4],[8,72,4],[16,76,6],[28,74,4],[32,72,4],[40,69,6],[52,71,4],
+          [64,72,4],[72,76,4],[80,79,6],[92,77,4],[96,76,4],[104,72,6],[112,69,8]].filter(n=>n[1]<=84) };
+  const SONG_REPEATS=2;   // ◇ each song is now 8 bars (~12.6s) — 2 loops each, ~75s before the macro-cycle repeats
+  let songIdx=0, songLoops=0, songStep=0, menuMode=false, curMode=null;
+  let mTimer=null, mNext=0, boss=false; const BPM=152, SPB=60/BPM/4;
+  function schedule(){ if(!ctx)return; try{ boss = !menuMode && (typeof enemies!=='undefined') && enemies.some(e=>!e.dead&&e.boss); }catch(_){ boss=false; }
     while(mNext < ctx.currentTime+0.12){
-      const s=mStep%64, bar=Math.floor(s/16), st=s%16;
-      if(s===0 && mStep>0){ songLoops++; if(songLoops>=SONG_REPEATS){ songLoops=0; songIdx=(songIdx+1)%SONGS.length; } }
-      const song=SONGS[songIdx], ch=song.ch[bar], LEAD=song.lead;
-      if(st===0||st===8||(boss&&st===14)) vKick(mNext);
-      if(st===4||st===12) vSnare(mNext);
-      vHat(mNext, st%4===2); if(boss&&st%2===1) vHat(mNext,false);
-      if(st%2===0){ const oct=(st===4||st===12)?12:0; vBass(mNext, ch.root+oct, SPB*1.9); } else if(boss){ vBass(mNext, ch.root+12, SPB*0.9); }
-      const at=ch.tones[st%3]+((st%6>=3)?12:0); vTone(mNext, MIDI(at), SPB*0.9, 'square', boss?0.045:0.035);
-      if(st===0) vPad(mNext, ch.pad, SPB*16);
-      for(const ln of LEAD){ if(ln[0]===s) vTone(mNext, MIDI(ln[1]+(boss?12:0)), SPB*ln[2]*0.95, 'square', 0.06); }
-      mNext+=SPB; mStep++;
+      const song=menuMode?MENU_SONG:SONGS[songIdx], LOOP=song.ch.length*16;
+      const s=songStep, bar=Math.floor(s/16), st=s%16, ch=song.ch[bar], LEAD=song.lead;
+      if(menuMode){
+        // grand + sparse: soft kick on the bar, lush pad, no snare grind
+        if(st===0) vKick(mNext);
+        if(st%4===0) vHat(mNext,true);
+        if(st%4===0) vBass(mNext, ch.root, SPB*3.6);
+        if(st===0) vPad(mNext, ch.pad.concat(ch.pad[0]+12), SPB*16);
+        for(const ln of LEAD){ if(ln[0]===s) vTone(mNext, MIDI(ln[1]), SPB*ln[2]*0.95, 'triangle', 0.075); }
+      } else {
+        if(st===0||st===8||(boss&&st===14)) vKick(mNext);
+        if(st===4||st===12) vSnare(mNext);
+        vHat(mNext, st%4===2); if(boss&&st%2===1) vHat(mNext,false);
+        if(st%2===0){ const oct=(st===4||st===12)?12:0; vBass(mNext, ch.root+oct, SPB*1.9); } else if(boss){ vBass(mNext, ch.root+12, SPB*0.9); }
+        const at=ch.tones[st%3]+((st%6>=3)?12:0); vTone(mNext, MIDI(at), SPB*0.9, 'square', boss?0.04:0.03);
+        if(st===0) vPad(mNext, ch.pad, SPB*16);
+        for(const ln of LEAD){ if(ln[0]===s) vTone(mNext, MIDI(ln[1]+(boss?12:0)), SPB*ln[2]*0.95, 'square', 0.07); }
+      }
+      songStep++; if(songStep>=LOOP){ songStep=0; if(!menuMode){ songLoops++; if(songLoops>=SONG_REPEATS){ songLoops=0; songIdx=(songIdx+1)%SONGS.length; } } }
+      mNext+=SPB;
     }
   }
   return { init:ensure, toggle(){muted=!muted; if(musicBus)musicBus.gain.value=muted?0:0.16; return muted;}, isMuted:()=>muted,
@@ -384,8 +403,10 @@ const Audio2 = (() => {
     siren(){ if(muted||!ctx)return; for(let k=0;k<2;k++){ setTimeout(()=>{ blip(440,0.45,'sawtooth',0.05,860); }, k*480); } },
     warn(){ blip(330,0.10,'square',0.05,247); },
     bossBoom(){ noise(0.5,0.12); blip(90,0.5,'triangle',0.06,30); setTimeout(()=>{noise(0.3,0.08);blip(70,0.35,'sawtooth',0.05,28);},180); },
-    musicStart(){ ensure(); if(!ctx||mTimer)return; mStep=0; songIdx=0; songLoops=0; mNext=ctx.currentTime+0.1; mTimer=setInterval(schedule,25); },
-    musicStop(){ if(mTimer){clearInterval(mTimer); mTimer=null;} } };
+    // ◇ idempotent per-mode: safe to call every frame; only (re)starts when switching modes
+    musicStart(){ ensure(); if(!ctx)return; if(curMode==='combat'&&mTimer)return; curMode='combat'; menuMode=false; songIdx=0; songLoops=0; songStep=0; mNext=ctx.currentTime+0.1; if(!mTimer)mTimer=setInterval(schedule,25); },
+    musicMenu(){ ensure(); if(!ctx)return; if(curMode==='menu'&&mTimer)return; curMode='menu'; menuMode=true; songLoops=0; songStep=0; mNext=ctx.currentTime+0.1; if(!mTimer)mTimer=setInterval(schedule,25); },
+    musicStop(){ curMode=null; if(mTimer){clearInterval(mTimer); mTimer=null;} } };
 })();
 
 /* ---------- canvas + scaling --------------------------------------- */
@@ -409,12 +430,17 @@ function resize(){
 window.addEventListener('resize',resize); resize();
 function toggleFS(){ const el=document.documentElement; try{ if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); } else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); } }catch(e){} }
 document.getElementById('fsBtn').addEventListener('click',toggleFS);
+{ const fr=document.getElementById('ctlFireRow'); if(fr)fr.addEventListener('click',toggleFireMode); }
 document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
 function toLocal(cx,cy){ const r=canvas.getBoundingClientRect(); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 
 /* ---------- input -------------------------------------------------- */
 const keys={}, pointer={active:false,x:W/2,y:H-120,isTouch:false};
 let uiButtons=[];
+let audioArmed=false;   // ◇ true once the player has interacted — gates menu music (autoplay needs a gesture)
+let fireHeld=false;     // ◇ manual-fire input held (pointer/J)
+let fireManual=false;   // ◇ fire mode: false=auto, true=manual (hold to fire). Persisted in META.fireManual.
+function toggleFireMode(){ fireManual=!fireManual; META.fireManual=fireManual; saveMeta(); const el=document.getElementById('ctlFire'); if(el)el.textContent=fireManual?'manual (hold)':'automatic'; Audio2.draft(); }
 const KONAMI=['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
 let konamiBuf=[], konamiUntil=0;
 function konamiCheck(k){
@@ -426,9 +452,9 @@ function konamiCheck(k){
 }
 window.addEventListener('keydown',e=>{
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault();
-  keys[e.key.toLowerCase()]=true; Audio2.init(); onKey(e.key.toLowerCase());
+  keys[e.key.toLowerCase()]=true; Audio2.init(); audioArmed=true; if(e.key.toLowerCase()==='j')fireHeld=true; onKey(e.key.toLowerCase());
 });
-window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; if(e.key.toLowerCase()==='j')fireHeld=false; });
 function onKey(k){
   if(state==='menu') konamiCheck(k);
   if(state==='menu'&&(k==='enter'))launch();
@@ -448,13 +474,14 @@ function onKey(k){
   else if(state==='draft'&&(k==='enter'))skipDraft();
   if(k==='m')Audio2.toggle();
   if(k==='f')toggleFS();
+  if(k==='t')toggleFireMode();   // ◇ toggle auto / manual fire
 }
 canvas.addEventListener('pointerdown',e=>{
-  Audio2.init(); try{ canvas.focus(); window.focus(); }catch(_){}
+  Audio2.init(); audioArmed=true; try{ canvas.focus(); window.focus(); }catch(_){}
   const p=toLocal(e.clientX,e.clientY);
   if(state==='hangar'||state==='codex'||state==='drydock'){ hangarDrag=true; hangarMoved=false; hangarDownY=p.y; hangarLastY=p.y; hangarDownPt=p; return; }
   for(const b of uiButtons){ if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){ b.action(); return; } }
-  if(state==='playing'){ pointer.active=true; pointer.isTouch=e.pointerType!=='mouse'; pointer.x=p.x; pointer.y=p.y; }
+  if(state==='playing'){ pointer.active=true; fireHeld=true; pointer.isTouch=e.pointerType!=='mouse'; pointer.x=p.x; pointer.y=p.y; }
 });
 canvas.addEventListener('pointermove',e=>{
   const p=toLocal(e.clientX,e.clientY);
@@ -463,7 +490,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 window.addEventListener('pointerup',()=>{
   if(hangarDrag){ hangarDrag=false; if(!hangarMoved&&hangarDownPt){ for(const b of uiButtons){ if(hangarDownPt.x>=b.x&&hangarDownPt.x<=b.x+b.w&&hangarDownPt.y>=b.y&&hangarDownPt.y<=b.y+b.h){ b.action(); break; } } } }
-  pointer.active=false;
+  pointer.active=false; fireHeld=false;
 });
 canvas.addEventListener('wheel',e=>{ if(state==='hangar'||state==='codex'||state==='drydock'){ hangarScroll=Math.max(0,Math.min(hangarMax,hangarScroll+e.deltaY*0.5)); e.preventDefault(); } },{passive:false});
 
@@ -713,7 +740,7 @@ let shake=0, flash=0, time=0, lanceFx=0;
 let bossWarn=0, bossDeathFx=0, lowHpT=0, vignette=0, bossDeathX=0, bossDeathY=0, bossDeathCol='#ffae3b';
 let dossierT=0; const DOSSIER_SECS=5;   // ◇ pre-launch loadout dossier countdown
 let pendingMini=false, strikeWarns=[];
-let spawnQueue=[], spawnTimer=0, waveActive=false;
+let spawnQueue=[], spawnTimer=0, waveActive=false, waveEliteBonus=0, waveArchName='';
 let killDepth=0, resolvingSpecial=false;          // loop guards (vocab §7)
 let pendingDrafts=0, draftMode='wave';
 let hangarScroll=0, hangarMax=0, hangarDrag=false, hangarMoved=false, hangarDownY=0, hangarLastY=0, hangarDownPt=null;
@@ -834,6 +861,7 @@ async function loadMeta(){
     if(r&&r.value){ const d=JSON.parse(r.value); META=Object.assign(JSON.parse(JSON.stringify(META_DEFAULT)),d);
       META.upg=Object.assign({},META_DEFAULT.upg,d.upg||{}); META.unlocks=d.unlocks||{}; META.seen=d.seen||{}; META.gear=d.gear||gearDefault(); } }catch(e){ /* first run / unavailable */ }
   gearIntegrity();
+  fireManual=!!META.fireManual; const fe=document.getElementById('ctlFire'); if(fe)fe.textContent=fireManual?'manual (hold)':'automatic';
 }
 async function saveMeta(){ try{ await window.storage.set('scrap_runner_meta', JSON.stringify(META)); }catch(e){} }
 function isSeen(type,id){ return !!(META.seen && META.seen[type+':'+id]); }
@@ -1160,21 +1188,36 @@ function applyCatchup(targetRank){
   for(let i=0;i<grant;i++){ const offer=pickN(availMods(),1); if(offer.length){ build.mods.push(offer[0].id); discover('mod',offer[0].id); } }
   buildRules(); recompute();
 }
+// ◇ wave design: authored archetypes on a fixed 10-wave cycle so the rhythm is learnable
+// (wave 2/12/22 = swarm, wave 7/17/27 = assassins, …). Cycle position 5=champion, 10=boss
+// (handled above). Each archetype defines its enemy pool, a count multiplier off the wave's
+// base, burst size (how many spawn together → swarms actually swarm, hardy comes in ones),
+// the gap between bursts, and an elite-chance bonus. mix at 9 is the gauntlet.
+const WAVE_ARCH={
+  1:{ name:'SCOUT LINE',     pool:['drifter','weaver'],                                  mult:0.8, burst:[1,2], gap:[0.5,0.9], elite:0 },
+  2:{ name:'SWARM',          pool:['swarmling','swarmling','weaver'],                     mult:2.2, burst:[4,6], gap:[0.3,0.55], elite:0 },
+  3:{ name:'GUNLINE',        pool:['gunner','weaver','drifter'],                          mult:1.0, burst:[1,2], gap:[0.45,0.8], elite:0.05 },
+  4:{ name:'HEAVY ELEMENT',  pool:['tank','brute'],                                       mult:0.45,burst:[1,1], gap:[0.9,1.4], elite:0.15 },
+  6:{ name:'CARRIER GROUP',  pool:['carrier','shielddrone','swarmling'],                  mult:0.7, burst:[1,2], gap:[0.6,1.0], elite:0.10 },
+  7:{ name:'ASSASSIN PACK',  pool:['assassin','leech'],                                   mult:0.9, burst:[2,3], gap:[0.4,0.7], elite:0.05 },
+  8:{ name:'ARTILLERY BARRAGE',pool:['artillery','shielddrone','gunner'],                 mult:0.7, burst:[1,1], gap:[0.7,1.1], elite:0.10 },
+  9:{ name:'MIXED ELITE',    pool:['drifter','weaver','gunner','tank','brute','carrier','assassin','repair'], mult:1.1, burst:[2,3], gap:[0.4,0.7], elite:0.35 },
+};
+const rnd=(a,b)=>a+Math.random()*(b-a), rndi=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
 function startWave(){
-  wave++; waveActive=true; spawnQueue=[];
-  if(wave%10===0){ bossWarn=2.0; pendingMini=false; Audio2.siren(); return; }   // big boss every 10
-  if(wave%5===0){ bossWarn=1.5; pendingMini=true;  Audio2.siren(); return; }    // mini-boss champion every 5
-  const count=(5+wave*2)*3;   // ◇ balance: 3× enemies/wave, paired with XP_MULT=1/3 above — same staggered per-spawn delay below, so a wave just takes ~3× longer rather than feeling rushed
-  const pool=['drifter'];
-  if(wave>=2){ pool.push('weaver','swarmling','swarmling'); }
-  if(wave>=3){ pool.push('gunner','tank'); }
-  if(wave>=4){ pool.push('brute','swarmling'); }
-  if(wave>=6){ pool.push('carrier'); }
-  if(wave>=7){ pool.push('leech','shielddrone'); }
-  if(wave>=8){ pool.push('artillery','repair'); }
-  if(wave>=9){ pool.push('assassin'); }
-  if(wave>=12){ pool.push('mimic'); }
-  for(let i=0;i<count;i++) spawnQueue.push({ type:pool[Math.floor(Math.random()*pool.length)], delay:0.25+Math.random()*0.6 });
+  wave++; waveActive=true; spawnQueue=[]; waveEliteBonus=0;
+  if(wave%10===0){ bossWarn=2.0; pendingMini=false; Audio2.siren(); waveArchName='GUARDIAN'; return; }   // big boss every 10
+  if(wave%5===0){ bossWarn=1.5; pendingMini=true;  Audio2.siren(); waveArchName='CHAMPION'; return; }     // mini-boss champion every 5
+  const cyc=((wave-1)%10)+1, A=WAVE_ARCH[cyc]||WAVE_ARCH[1];
+  waveArchName=A.name; waveEliteBonus=A.elite;
+  const base=Math.round(6+wave*0.7);                 // gentle linear growth (was (5+wave*2)*3 — a huge slog)
+  let remaining=Math.max(4, Math.round(base*A.mult));
+  let first=true;
+  while(remaining>0){
+    const b=Math.min(remaining, rndi(A.burst[0],A.burst[1]));
+    for(let i=0;i<b;i++){ spawnQueue.push({ type:A.pool[Math.floor(Math.random()*A.pool.length)], delay:i===0?(first?0.4:rnd(A.gap[0],A.gap[1])):0 }); }
+    remaining-=b; first=false;
+  }
   spawnTimer=spawnQueue[0].delay;
 }
 function spawnMiniBoss(){
@@ -1208,7 +1251,7 @@ function spawnEnemyAt(type,x,y){
     fire:1+Math.random()*1.5, phase:Math.random()*6.28, baseX:x, hitFlash:0, status:{}, dead:false };
   if(type==='mimic') e.copies=true;
   // elite: appears from wave 4, chance scales with depth (never on swarmlings — they're fodder)
-  if(type!=='swarmling' && wave>=4 && Math.random() < Math.min(0.22, 0.03+wave*0.012)){
+  if(type!=='swarmling' && wave>=4 && Math.random() < Math.min(0.5, 0.03+wave*0.012+waveEliteBonus)){
     e.elite=true; e.r*=1.12; e.maxHp*=1.7; e.hp=e.maxHp; e.score*=2; e.scrap*=2; e.xp*=2;
     if(type==='carrier'||type==='tank'||type==='brute'){ e.shieldMax=e.maxHp*0.6; e.shield=e.shieldMax; }   // shielded bulwark
     else if(type==='gunner'){ e.fireRate=0.55; }                                                            // suppressing fire
@@ -1315,7 +1358,7 @@ function update(dt){
   updateStrikes(dt);
 
   // spawn
-  if(spawnQueue.length){ spawnTimer-=dt; if(spawnTimer<=0){ spawnEnemy(spawnQueue.shift()); spawnTimer=spawnQueue.length?spawnQueue[0].delay:0; } }
+  if(spawnQueue.length){ spawnTimer-=dt; while(spawnQueue.length && spawnTimer<=0){ spawnEnemy(spawnQueue.shift()); spawnTimer+=spawnQueue.length?spawnQueue[0].delay:0; } }   // ◇ drains delay-0 items in one tick so bursts spawn together (swarms)
   else if(state==='playing' && waveActive && enemies.length===0 && bossWarn<=0 && bossDeathFx<=0){   // ◇ pacing: state guard — don't clobber a rank-up draft that opened earlier this same frame
     waveActive=false;
     if(wave%5===0) setBgTheme(Math.floor(wave/5));            // new stage backdrop after each boss
@@ -1326,12 +1369,14 @@ function update(dt){
 function firePrimary(dt){
   const prim=PRIMARIES[build.primary];
   const ocMul=1+(player.oc||0)*0.1, ocPierce=Math.floor((player.oc||0)/3);
+  const firing = !fireManual || fireHeld;   // ◇ auto mode always fires; manual fires only while held (mouse/touch/J)
   if(prim.kind==='beam'){
     // continuous beam; overheats, then vents with hysteresis (heatLock), then resumes
     if(player.heatLock){
       player.heat=Math.max(0, player.heat-0.6*dt); player.beamOn=false;
       if(player.heat<=0.15) player.heatLock=false;
-    } else {
+    } else if(!firing){ player.beamOn=false; player.heat=Math.max(0, player.heat-0.4*dt); }
+    else {
       player.beamOn=true;
       const dps=prim.dps*stats.damageMult*ocMul*(player.tFrenzy>0?1.5:1);
       for(const e of enemies){ if(Math.abs(e.x-player.x)<e.r+10 && e.y>0 && e.y<player.y){ damageEnemy(e, dps*dt, prim.type||'thermal', true, true, true); } }
@@ -1340,7 +1385,8 @@ function firePrimary(dt){
     }
     return;
   }
-  player.fire-=dt;
+  if(player.fire>0) player.fire-=dt;
+  if(!firing){ if(player.fire<0)player.fire=0; return; }   // ◇ manual: hold to fire; keep cooldown ready so the first held shot is instant
   let interval=prim.interval*stats.fireMult;
   if(HULLS[build.hull].movingFire && player.moving) interval*=HULLS[build.hull].movingFire;
   if(player.fireBuff>0) interval*=0.6;
@@ -1448,8 +1494,17 @@ function updateEnemies(dt){
       if(e.type==='leech'){ const drain=Math.min(player.charge,SPECIALS[build.special].chargeMax*0.3); player.charge-=drain; e.hp=Math.min(e.maxHp,e.hp+8); spawnFloat(player.x,player.y-22,'-CHARGE',true); damagePlayer(12); }
       else damagePlayer(e.champion?42:(e.type==='tank'||e.type==='brute')?30:e.type==='swarmling'?14:22);
     }
-    if(e.y-e.r>H && !e.champion) enemies.splice(i,1);
+    if(e.y-e.r>H && !e.champion){ enemyLeak(e); enemies.splice(i,1); }
   }
+}
+// ◇ an enemy that reaches the bottom isn't free any more — it chips your hull (no i-frames,
+// it's off-screen) so letting things through costs you. Small per-type values so a swarm
+// stings without instakilling; routed direct (not damagePlayer) to skip shields/flash spam.
+function enemyLeak(e){
+  if(!player||player.hp<=0) return;
+  const d = e.type==='swarmling'?1 : (e.type==='tank'||e.type==='brute'||e.type==='carrier')?4 : (e.type==='drifter'||e.type==='weaver')?2 : 3;
+  player.hp-=d; vignette=Math.min(1,vignette+0.12);
+  if(player.hp<=0){ if(player.revives>0){ player.revives--; player.hp=Math.round(stats.maxHp*0.5); player.inv=2.4; eBullets.length=0; Audio2.charged(); spawnFloat(player.x,player.y-14,'PHOENIX',true); } else { player.hp=0; gameOver(); } }
 }
 function updateBoss(e,dt){
   e.phase = (e.hp/e.maxHp>0.66)?1 : (e.hp/e.maxHp>0.33)?2 : 3;
@@ -1986,6 +2041,27 @@ function btn(label,x,y,w,h,action,o={}){
   ctx.restore();
   txt(label,x+w/2,y+h/2+5,o.size||15,o.fg||COL.text,'center');
 }
+// ◇ the marquee LAUNCH button — breathing teal glow, magenta corner taps, edge tracers,
+// no play-triangle (it read as off-centre). Stands out from the plain btn() chrome.
+function launchButton(x,y,w,h){
+  uiButtons.push({x,y,w,h,action:launch});
+  const pulse=0.5+0.5*Math.sin(time*3.2), c=10;
+  ctx.save();
+  const g=ctx.createLinearGradient(x,y,x,y+h); g.addColorStop(0,'rgba(56,232,255,0.28)'); g.addColorStop(1,'rgba(56,232,255,0.10)');
+  ctx.fillStyle=g; panelPath(x,y,w,h,c); ctx.fill();
+  glow('#38e8ff',10+10*pulse); ctx.strokeStyle='#38e8ff'; ctx.lineWidth=2; panelPath(x,y,w,h,c); ctx.stroke(); noGlow();
+  // inner highlight
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x+c+3,y+3); ctx.lineTo(x+w-3,y+3); ctx.stroke();
+  // magenta corner taps
+  glow('#ff2da0',6); ctx.strokeStyle='#ff2da0'; ctx.lineWidth=2; const L=12;
+  ctx.beginPath(); ctx.moveTo(x+6,y+h-6-L); ctx.lineTo(x+6,y+h-6); ctx.lineTo(x+6+L,y+h-6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+w-6,y+6+L); ctx.lineTo(x+w-6,y+6); ctx.lineTo(x+w-6-L,y+6); ctx.stroke(); noGlow();
+  // running edge tracer along the bottom
+  const tx=x+8+((time*180)%(w-16));
+  ctx.fillStyle='#bff4ff'; ctx.globalAlpha=0.8; ctx.fillRect(tx,y+h-4,16,2); ctx.globalAlpha=1;
+  ctx.restore();
+  neon('LAUNCH',W/2,y+h/2+7,20,'#eaffff','center','Orbitron',8+6*pulse);
+}
 function statLine(cx,y,label,col){ ctx.font='14px "Share Tech Mono", monospace'; const w=ctx.measureText(label).width, total=w+18, x0=cx-total/2; ctx.fillStyle=col; ctx.fillRect(x0,y-9,10,10); ctx.textAlign='left'; ctx.fillText(label,x0+18,y); }
 // faint corner-bracket frame for grouping a telemetry cluster (rationed: thin + low alpha)
 function bracketSoft(x,y,w,h,col,a){ col=col||'#38e8ff'; ctx.save(); ctx.globalAlpha=a||0.45; ctx.strokeStyle=col; ctx.lineWidth=1; const L=9; ctx.beginPath();
@@ -2006,7 +2082,7 @@ function drawHUD(){
   // ◇ readability: a champion or boss draws its own name+bar right here (y~16-46) —
   // suppress this readout while either is up instead of stacking text on top of it
   const tgt=enemies.filter(e=>!e.dead&&!e.boss).length, threatBusy=enemies.some(e=>!e.dead&&(e.boss||e.champion));
-  if(!threatBusy){ txt('◎ '+tgt+' TARGETS',W/2,36,9,tgt>0?COL.accent:COL.dim,'center','Orbitron');
+  if(!threatBusy){ txt('◎ '+tgt+' TARGETS  ·  '+waveArchName,W/2,36,9,tgt>0?COL.accent:COL.dim,'center','Orbitron');
     if(wave%5!==0) txt('next contact · lvl '+(wave+(5-wave%5)),W/2,48,8,COL.dim,'center'); }
 
   // ── top-right: instrument cluster (level + paired dials) ─
@@ -2108,17 +2184,19 @@ function drawPause(){
 function drawMenu(){
   const flick = (Math.random()<0.05)?0.78:1;
   ctx.globalAlpha=flick;
-  neon('SCRAP',W/2,86,46,'#ff2da0','center','Orbitron',22);
-  neon('RUNNER',W/2,132,46,'#38e8ff','center','Orbitron',22);
+  // ◇ layout: widened vertical spacing through the title block — the big neon caps were
+  // crowding the EST line and the salvage readout in the screenshots.
+  neon('SCRAP',W/2,74,44,'#ff2da0','center','Orbitron',20);
+  neon('RUNNER',W/2,116,44,'#38e8ff','center','Orbitron',20);
   ctx.globalAlpha=1;
-  ctx.save(); glow('#38e8ff',12); ctx.strokeStyle='#38e8ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W/2-150,150); ctx.lineTo(W/2+150,150); ctx.stroke(); noGlow(); ctx.restore();
-  txt('EST. 2100 · SECTOR SALVAGE LICENCE',W/2,166,9,COL.dim,'center');
+  ctx.save(); glow('#38e8ff',12); ctx.strokeStyle='#38e8ff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W/2-150,138); ctx.lineTo(W/2+150,138); ctx.stroke(); noGlow(); ctx.restore();
+  txt('EST. 2100 · SECTOR SALVAGE LICENCE',W/2,154,9,COL.dim,'center');
   txt('v'+VERSION,W-10,H-6,8,'rgba(255,255,255,0.18)','right');   // ◇ was declared but never shown anywhere in-game
   // salvage — quiet currency readout, no frame
-  ctx.fillStyle=COL.scrap; ctx.fillRect(W/2-66,189,9,9); txt(META.salvage+' SALVAGE',W/2-50,198,12,COL.scrap,'left','Orbitron');
+  ctx.fillStyle=COL.scrap; ctx.fillRect(W/2-62,174,9,9); txt(META.salvage+' SALVAGE',W/2-46,183,12,COL.scrap,'left','Orbitron');
   // live hull preview inside a reticle
-  reticle(W/2,228,28,'rgba(56,232,255,0.45)',time*0.3);
-  ctx.save(); ctx.translate(W/2,228); ctx.scale(1.55,1.55); drawHullSprite(hullKeys[selH],0,0); ctx.restore();
+  reticle(W/2,219,26,'rgba(56,232,255,0.45)',time*0.3);
+  ctx.save(); ctx.translate(W/2,219); ctx.scale(1.5,1.5); drawHullSprite(hullKeys[selH],0,0); ctx.restore();
   // ◇ layout: each selector's blurb can wrap to 2 lines (longest is 86 chars) — drive every
   // row off the actual rendered height of the one before it instead of fixed magic-number
   // offsets, or a long blurb collides with whatever comes next (was the messy-text bug).
@@ -2130,16 +2208,17 @@ function drawMenu(){
   const maxSS=Math.max(1,Math.floor((META.maxLevel||0)/5)+1);
   if(startSector>maxSS)startSector=maxSS;
   if(maxSS>1){
-    btn('◂',W/2-104,y,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
-    txt('START · SECTOR '+startSector+'  (level '+((startSector-1)*5+1)+')',W/2,y+16,11,startSector>1?COL.heat:COL.dim,'center');
-    btn('▸',W/2+74,y,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+    // ◇ arrows pushed to the far sides + shortened label so the ▸ no longer sits on the text
+    btn('◂',W/2-150,y,30,24,()=>{startSector=Math.max(1,startSector-1);},{size:14,bg:'rgba(56,232,255,0.08)'});
+    txt('SECTOR '+startSector+' · LV '+((startSector-1)*5+1),W/2,y+16,11,startSector>1?COL.heat:COL.dim,'center','Orbitron');
+    btn('▸',W/2+120,y,30,24,()=>{startSector=Math.min(maxSS,startSector+1);},{size:14,bg:'rgba(56,232,255,0.08)'});
     y+=24;
   } else { txt('survive deeper to unlock a higher start sector',W/2,y+10,9,COL.dim,'center'); y+=20; }
-  y+=16;
+  y+=18;
   const locked=!isUnlocked('hull',hullKeys[selH])||!isUnlocked('primary',primKeys[selP])||!isUnlocked('special',specKeys[selS]);
   if(locked) btn('🔒 LOCKED — VISIT HANGAR',W/2-130,y,260,46,()=>{state='hangar';},{size:13,bg:'rgba(255,84,112,0.10)',border:COL.gunner,fg:COL.gunner});
-  else btn('▶  LAUNCH',W/2-130,y,260,46,launch,{size:18,primary:true});
-  y+=46;
+  else launchButton(W/2-130,y,260,48);
+  y+=48;
   if(META.equippedRelic){ const er=RELICS.find(r=>r.id===META.equippedRelic); if(er) txt('◆ relic socketed: '+er.name,W/2,y+16,10,er.col,'center','Orbitron'); }
   y+=24;
   btn('⚙ HANGAR',W/2-205,y,80,40,()=>{hangarScroll=0;hangarTab=0;openDrawer=null;drawerT=0;state='hangar';},{size:10,fg:'#9fb8d8'});
@@ -2679,8 +2758,12 @@ function drawDraft(){
   // ◇ readability: card height is sized to its actual content (was stretched to fill the
   // whole outer panel, leaving a huge dead gap below short descriptions) — panel is sized
   // to wrap snugly around header+cards+footer instead, then centred vertically
-  const headerH=98, cardH=180, footerGap=24, footerH=38, footerPad=16;
-  const px=20, pw=W-40, ph=headerH+cardH+footerGap+footerH+footerPad, py=Math.round((H-ph)/2);
+  // ◇ wrap to 2 rows past 4 cards (extra-draft upgrades push it to 5-6) — a single row made
+  // each card a cramped sliver; a grid keeps them readable.
+  const cols=n<=4?n:Math.ceil(n/2), rows=Math.ceil(n/cols), rowGap=12;
+  const headerH=98, cardH=rows>1?150:180, footerGap=22, footerH=38, footerPad=16;
+  const gridH=rows*cardH+(rows-1)*rowGap;
+  const px=20, pw=W-40, ph=headerH+gridH+footerGap+footerH+footerPad, py=Math.round((H-ph)/2);
 
   ctx.save(); glow(accent,14); ctx.fillStyle='rgba(8,12,26,0.92)'; ctx.strokeStyle=accent; ctx.lineWidth=1.6;
   cutRect(px,py,pw,ph,16); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
@@ -2696,10 +2779,11 @@ function drawDraft(){
   txt((rank?'RANK '+(player?player.rank:1):'WAVE REWARD')+'  ·  '+n+' cards  ·  reroll ◎'+rerollCost, W/2, py+78, 10, COL.dim,'center');
   ctx.fillStyle=COL.scrap; ctx.fillRect(px+pw-58,py+15,7,7); txt(String(scrap),px+pw-46,py+22,11,COL.scrap,'left');
 
-  const gap=10, padX=18, cardTop=py+headerH, cw=(pw-2*padX-(n-1)*gap)/n;
+  const gap=10, padX=18, cardTop=py+headerH, cw=(pw-2*padX-(cols-1)*gap)/cols;
   for(let i=0;i<n;i++){
     const m=draftOffer[i]; if(!m)continue;
-    const owned=modCount(m.id), cap=m.max||5, col=rarCol(m.rarity), cx=px+padX+i*(cw+gap), cy=cardTop;
+    const col_=i%cols, row_=Math.floor(i/cols);
+    const owned=modCount(m.id), cap=m.max||5, col=rarCol(m.rarity), cx=px+padX+col_*(cw+gap), cy=cardTop+row_*(cardH+rowGap);
     ctx.save(); const grad=ctx.createLinearGradient(0,cy,0,cy+cardH); grad.addColorStop(0,col+'33'); grad.addColorStop(1,'rgba(8,12,26,0.6)');
     ctx.fillStyle=grad; ctx.strokeStyle=col; ctx.lineWidth=1.5; if(owned>0) glow(col,8);
     cutRect(cx,cy,cw,cardH,12); ctx.fill(); ctx.stroke(); noGlow(); ctx.restore();
@@ -2850,7 +2934,11 @@ function updatePanels(){
     setHtml('pMods', '<div class="li" style="color:#46566f">launch a run to track mods</div>');
   }
 }
-function frame(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05; update(dt); draw(); updatePanels(); requestAnimationFrame(frame); }
+function frame(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05;
+  // ◇ menu/lobby music: play the grand theme on every non-combat screen once the player has
+  // interacted (autoplay needs a gesture). Combat screens drive their own track via musicStart.
+  if(audioArmed && (state==='menu'||state==='hangar'||state==='drydock'||state==='codex'||state==='relics'||state==='stats')) Audio2.musicMenu();
+  update(dt); draw(); updatePanels(); requestAnimationFrame(frame); }
 requestAnimationFrame(frame);
 </script>
 </body>

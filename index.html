@@ -58,9 +58,20 @@
   .li { display:flex; align-items:center; gap:9px; padding:3.5px 0; color:#9fb0cf; font-size:12px; }
   .blk.rx .li { white-space:nowrap; }
   .sw { width:11px; height:11px; border-radius:2px; flex:none; }
-  #fsBtn { position:fixed; top:14px; right:14px; z-index:10; background:rgba(56,232,255,0.1); color:#38e8ff;
+  #fsBtn { position:fixed; top:14px; right:58px; z-index:10; background:rgba(56,232,255,0.1); color:#38e8ff;
            border:1px solid rgba(56,232,255,0.4); border-radius:6px; padding:8px 13px; font:12px 'Share Tech Mono',monospace; cursor:pointer; text-shadow:0 0 6px rgba(56,232,255,0.6); }
   #fsBtn:hover { background:rgba(56,232,255,0.2); }
+  #cogBtn { position:fixed; top:14px; right:14px; z-index:11; width:36px; height:34px; background:rgba(56,232,255,0.1); color:#38e8ff;
+            border:1px solid rgba(56,232,255,0.4); border-radius:6px; font:16px 'Share Tech Mono',monospace; cursor:pointer; text-shadow:0 0 6px rgba(56,232,255,0.6); line-height:1; }
+  #cogBtn:hover { background:rgba(56,232,255,0.2); }
+  #settings { position:fixed; top:56px; right:14px; z-index:12; display:none; width:212px; padding:13px 15px;
+              background:rgba(8,12,26,0.95); border:1px solid rgba(56,232,255,0.4); border-radius:8px;
+              font:12px 'Share Tech Mono',monospace; color:#9fb0cf; box-shadow:0 6px 26px rgba(0,0,0,0.6),inset 0 0 26px rgba(56,232,255,0.06); }
+  #settings.open { display:block; }
+  #settings .sttl { color:#38e8ff; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:9px; text-shadow:0 0 6px rgba(56,232,255,0.5); }
+  #settings .srow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:5px 0; cursor:pointer; }
+  #settings .srow input[type=range] { width:96px; accent-color:#38e8ff; cursor:pointer; }
+  #settings .srow input[type=checkbox] { width:16px; height:16px; accent-color:#38e8ff; cursor:pointer; }
   @media (min-width:1280px){ .panel{ display:flex; } }
 
   /* ============================================================
@@ -122,6 +133,13 @@
 <body>
 <div id="scan"></div>
 <button id="fsBtn">⛶ Fullscreen</button>
+<button id="cogBtn" title="Settings" aria-label="Settings">⚙</button>
+<div id="settings">
+  <div class="sttl">Audio</div>
+  <label class="srow"><span>Music</span><input type="checkbox" id="setMusic"></label>
+  <label class="srow"><span>Volume</span><input type="range" id="setVol" min="0" max="100" step="5"></label>
+  <label class="srow"><span>Sound FX</span><input type="checkbox" id="setSfx"></label>
+</div>
 <div id="wrap">
   <aside class="panel">
     <div>
@@ -346,7 +364,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.10.2';
+const VERSION = '0.11.0';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -357,8 +375,9 @@ const COL = {
 
 /* ---------- audio (lazy WebAudio) ---------------------------------- */
 const Audio2 = (() => {
-  let ctx=null, muted=false, musicBus=null, master=null;
+  let ctx=null, muted=false, musicOn=true, musicVol=1, sfxOn=true, musicBus=null, sfxBus=null, master=null;
   const MIDI=n=>440*Math.pow(2,(n-69)/12);
+  const musicGain=()=>(muted||!musicOn)?0:0.16*musicVol;   // master-mute · music toggle · volume
   // ── band-limited pulse waves (NES 2A03 duty cycles) ──────────────────
   // Per-harmonic amplitude ∝ sin(n·π·duty)/n — the textbook Fourier pulse.
   // 12.5% / 25% give the thin, buzzy MM2 lead; 50% is a plain square.
@@ -372,9 +391,10 @@ const Audio2 = (() => {
   function softCurve(){ const N=1024,c=new Float32Array(N); for(let i=0;i<N;i++){ const x=(i/(N-1))*2-1; c[i]=Math.tanh(x); } return c; }
   const ensure=()=>{ if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} if(ctx&&ctx.state==='suspended')ctx.resume();
     if(ctx&&!master){ master=ctx.createWaveShaper(); master.curve=softCurve(); master.oversample='2x'; master.connect(ctx.destination); }
-    if(ctx&&!musicBus){ musicBus=ctx.createGain(); musicBus.gain.value=muted?0:0.16; musicBus.connect(master); } };
-  function blip(f,d,t='square',v=0.05,to=null){ if(muted||!ctx)return; const n=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(); o.type=t;o.frequency.setValueAtTime(f,n); if(to)o.frequency.exponentialRampToValueAtTime(to,n+d); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(0.0001,n+d); o.connect(g);g.connect(ctx.destination);o.start(n);o.stop(n+d); }
-  function noise(d,v=0.08){ if(muted||!ctx)return; const n=Math.floor(ctx.sampleRate*d),b=ctx.createBuffer(1,n,ctx.sampleRate),da=b.getChannelData(0); for(let i=0;i<n;i++)da[i]=(Math.random()*2-1)*(1-i/n); const s=ctx.createBufferSource(),g=ctx.createGain(); s.buffer=b;g.gain.value=v;s.connect(g);g.connect(ctx.destination);s.start(); }
+    if(ctx&&!musicBus){ musicBus=ctx.createGain(); musicBus.gain.value=musicGain(); musicBus.connect(master); }
+    if(ctx&&!sfxBus){ sfxBus=ctx.createGain(); sfxBus.gain.value=1; sfxBus.connect(master); } };
+  function blip(f,d,t='square',v=0.05,to=null){ if(muted||!sfxOn||!ctx)return; const n=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain(); o.type=t;o.frequency.setValueAtTime(f,n); if(to)o.frequency.exponentialRampToValueAtTime(to,n+d); g.gain.setValueAtTime(v,n); g.gain.exponentialRampToValueAtTime(0.0001,n+d); o.connect(g);g.connect(sfxBus);o.start(n);o.stop(n+d); }
+  function noise(d,v=0.08){ if(muted||!sfxOn||!ctx)return; const n=Math.floor(ctx.sampleRate*d),b=ctx.createBuffer(1,n,ctx.sampleRate),da=b.getChannelData(0); for(let i=0;i<n;i++)da[i]=(Math.random()*2-1)*(1-i/n); const s=ctx.createBufferSource(),g=ctx.createGain(); s.buffer=b;g.gain.value=v;s.connect(g);g.connect(sfxBus);s.start(); }
 
   /* ── chiptune soundtrack — NES 2A03 voice palette (orig. MM2-style) ── */
   // pulse note (lead / arp bed) — snappy AD envelope, optional delayed
@@ -494,7 +514,10 @@ const Audio2 = (() => {
       mNext+=SPB;
     }
   }
-  return { init:ensure, toggle(){muted=!muted; if(musicBus)musicBus.gain.value=muted?0:0.16; return muted;}, isMuted:()=>muted,
+  return { init:ensure, toggle(){muted=!muted; if(musicBus)musicBus.gain.value=musicGain(); return muted;}, isMuted:()=>muted,
+    setMusic(on){ musicOn=!!on; if(musicBus)musicBus.gain.value=musicGain(); }, getMusic:()=>musicOn,
+    setMusicVol(v){ musicVol=Math.max(0,Math.min(1,v)); if(musicBus)musicBus.gain.value=musicGain(); }, getMusicVol:()=>musicVol,
+    setSfx(on){ sfxOn=!!on; }, getSfx:()=>sfxOn,
     shoot(){blip(720,0.05,'square',0.02,480);}, explode(){noise(0.2,0.09);blip(120,0.16,'triangle',0.04,50);},
     pickup(){blip(880,0.06,'sine',0.05,1320);}, hurt(){blip(140,0.18,'sawtooth',0.07,60);}, crit(){blip(990,0.06,'square',0.05,1480);},
     special(){blip(330,0.12,'sawtooth',0.06,880);}, charged(){blip(660,0.08,'sine',0.05,990);},
@@ -530,6 +553,26 @@ window.addEventListener('resize',resize); resize();
 function toggleFS(){ const el=document.documentElement; try{ if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el); } else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); } }catch(e){} }
 document.getElementById('fsBtn').addEventListener('click',toggleFS);
 { const fr=document.getElementById('ctlFireRow'); if(fr)fr.addEventListener('click',toggleFireMode); }
+/* ---------- settings cog (audio: music on/off · volume · sfx on/off) ---- */
+function applyAudioSettings(){
+  const a=(META&&META.audio)||{music:true,vol:0.8,sfx:true};
+  const on=a.music!==false, vol=(typeof a.vol==='number')?a.vol:0.8, sfx=a.sfx!==false;
+  Audio2.setMusic(on); Audio2.setMusicVol(vol); Audio2.setSfx(sfx);
+  const m=document.getElementById('setMusic'), v=document.getElementById('setVol'), s=document.getElementById('setSfx');
+  if(m)m.checked=on; if(v)v.value=Math.round(vol*100); if(s)s.checked=sfx;
+}
+{ const cog=document.getElementById('cogBtn'), panel=document.getElementById('settings'),
+      m=document.getElementById('setMusic'), v=document.getElementById('setVol'), s=document.getElementById('setSfx');
+  if(!META.audio)META.audio={music:true,vol:0.8,sfx:true};
+  if(cog&&panel){
+    cog.addEventListener('click',(e)=>{ e.stopPropagation(); Audio2.init(); audioArmed=true; panel.classList.toggle('open'); Audio2.draft(); });
+    document.addEventListener('click',(e)=>{ if(panel.classList.contains('open')&&!panel.contains(e.target)&&e.target!==cog) panel.classList.remove('open'); });
+  }
+  if(m)m.addEventListener('change',()=>{ META.audio.music=m.checked; Audio2.setMusic(m.checked); saveMeta(); });
+  if(v){ v.addEventListener('input',()=>{ const val=(+v.value)/100; META.audio.vol=val; Audio2.setMusicVol(val); });
+         v.addEventListener('change',saveMeta); }
+  if(s)s.addEventListener('change',()=>{ META.audio.sfx=s.checked; Audio2.setSfx(s.checked); if(s.checked)Audio2.draft(); saveMeta(); });
+}
 document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
 function toLocal(cx,cy){ const r=canvas.getBoundingClientRect(); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 
@@ -951,16 +994,18 @@ window.storage = (function(){
   };
 })();
 
-const META_DEFAULT = { salvage:0, cores:0, maxLevel:0, unlocks:{}, seen:{}, relics:{}, equippedRelic:null, gear:gearDefault(), weaponUpg:{}, upg:{frame:0,magnet:0,charge:0,reroll:0,veteran:0,extradraft:0,crit:0,move:0,power:0,shield:0,salvageboost:0,elite:0,warhead:0,overflow:0,primed:0,reactor:0,revive:0,coremag:0} };
+const META_DEFAULT = { salvage:0, cores:0, maxLevel:0, unlocks:{}, seen:{}, relics:{}, equippedRelic:null, gear:gearDefault(), weaponUpg:{}, audio:{music:true,vol:0.8,sfx:true}, upg:{frame:0,magnet:0,charge:0,reroll:0,veteran:0,extradraft:0,crit:0,move:0,power:0,shield:0,salvageboost:0,elite:0,warhead:0,overflow:0,primed:0,reactor:0,revive:0,coremag:0} };
 let META = JSON.parse(JSON.stringify(META_DEFAULT));
 let lastEarned = 0, coresEarned = 0, endReason='lost', startSector=1;
 function gearIntegrity(){ if(!META.gear)META.gear=gearDefault(); for(const s of GEAR_SLOTS){ if(!META.gear[s])META.gear[s]={piece:GEAR[s][0].id,level:0,crew:null}; if(!GEAR[s].find(p=>p.id===META.gear[s].piece))META.gear[s].piece=GEAR[s][0].id; } }
 async function loadMeta(){
   try{ const r=await window.storage.get('scrap_runner_meta');
     if(r&&r.value){ const d=JSON.parse(r.value); META=Object.assign(JSON.parse(JSON.stringify(META_DEFAULT)),d);
-      META.upg=Object.assign({},META_DEFAULT.upg,d.upg||{}); META.unlocks=d.unlocks||{}; META.seen=d.seen||{}; META.gear=d.gear||gearDefault(); } }catch(e){ /* first run / unavailable */ }
+      META.upg=Object.assign({},META_DEFAULT.upg,d.upg||{}); META.unlocks=d.unlocks||{}; META.seen=d.seen||{}; META.gear=d.gear||gearDefault();
+      META.audio=Object.assign({},META_DEFAULT.audio,d.audio||{}); } }catch(e){ /* first run / unavailable */ }
   gearIntegrity();
   fireManual=!!META.fireManual; const fe=document.getElementById('ctlFire'); if(fe)fe.textContent=fireManual?'manual (hold)':'automatic';
+  applyAudioSettings();
 }
 async function saveMeta(){ try{ await window.storage.set('scrap_runner_meta', JSON.stringify(META)); }catch(e){} }
 function isSeen(type,id){ return !!(META.seen && META.seen[type+':'+id]); }

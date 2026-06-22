@@ -364,7 +364,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.11.1';
+const VERSION = '0.11.2';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -471,18 +471,23 @@ const Audio2 = (() => {
     [96,91,1],[97,86,1],[98,83,1],[99,86,1],[100,91,2],[102,86,1],[103,83,1],[104,79,1],[105,83,1],[106,86,1],[107,83,1],[108,79,2],[110,83,2],
     [112,88,1],[113,83,1],[114,80,1],[115,83,1],[116,88,1],[117,91,1],[118,88,1],[119,83,1],[120,80,1],[121,76,1],[122,80,1],[123,83,1],[124,76,4] ] };
   const COMBAT=[A_,B_,C_,D_];
-  // Macro-arrangement: 10 sections × 8 bars = 80 bars (~1:54 @168 BPM) of
+  // Macro-arrangement: 10 sections × 8 bars = 80 bars (~2:08 @150 BPM) of
   // varied material before the whole sequence repeats — ~5× the old A→B loop,
   // and no section ever sits next to a copy of itself.
   const ORDER=[0,1,2,0,3,1,2,3,0,3];
-  // Menu theme — same engine, slower-feeling, soaring 25%-duty lead, no snare drive.
+  // Menu theme — driving + dense (rounder 25%-duty lead) so the lobby/hangar
+  // screens have real energy too, with its own backbeat-led arrangement.
   const MENU_={ ch:['Am','F','C','G','Dm','Am','E','Am'], lead:[
-    [0,69,6,.25],[8,72,6,.25],[16,76,10,.25],[28,74,4,.25],
-    [32,72,6,.25],[40,69,10,.25],[52,71,4,.25],
-    [64,72,6,.25],[72,76,6,.25],[80,79,10,.25],[92,77,4,.25],
-    [96,76,6,.25],[104,72,10,.25],[112,69,12,.25] ] };
+    [0,69,2],[2,72,2],[4,76,2],[6,72,2],[8,69,1],[9,72,1],[10,76,1],[11,81,1],[12,76,2],[14,72,2],
+    [16,77,2],[18,72,2],[20,69,2],[22,72,2],[24,77,1],[25,72,1],[26,69,1],[27,65,1],[28,69,2],[30,72,2],
+    [32,76,2],[34,79,2],[36,84,2],[38,79,2],[40,76,1],[41,79,1],[42,84,1],[43,88,1],[44,84,2],[46,79,2],
+    [48,74,2],[50,79,2],[52,83,2],[54,79,2],[56,74,1],[57,79,1],[58,83,1],[59,86,1],[60,83,2],[62,79,2],
+    [64,77,2],[66,81,2],[68,86,2],[70,81,2],[72,77,1],[73,81,1],[74,86,1],[75,89,1],[76,86,2],[78,81,2],
+    [80,81,2],[82,76,2],[84,72,2],[86,76,2],[88,81,1],[89,84,1],[90,88,1],[91,84,1],[92,81,2],[94,76,2],
+    [96,80,2],[98,83,2],[100,88,2],[102,83,2],[104,80,1],[105,83,1],[106,88,1],[107,92,1],[108,88,2],[110,83,2],
+    [112,81,2],[114,76,2],[116,72,2],[118,69,2],[120,72,1],[121,76,1],[122,81,1],[123,84,1],[124,81,4] ] };
   let orderIdx=0, songStep=0, menuMode=false, curMode=null, arpCtr=0;
-  let mTimer=null, mNext=0, boss=false; const BPM=172, SPB=60/BPM/4, ARP=1/60;
+  let mTimer=null, mNext=0, boss=false; const BPM=150, SPB=60/BPM/4, ARP=1/60;
   // Look-ahead scheduler (Chris Wilson "two clocks"): a 25ms timer schedules
   // notes ~120ms ahead against ctx.currentTime, so timing stays sample-accurate.
   function schedule(){ if(!ctx)return; try{ boss = !menuMode && (typeof enemies!=='undefined') && enemies.some(e=>!e.dead&&e.boss); }catch(_){ boss=false; }
@@ -491,15 +496,17 @@ const Audio2 = (() => {
       const s=songStep, bar=Math.floor(s/16), st=s%16, c=CH[song.ch[bar]], LEAD=song.lead;
       // signature trick — fake a chord by cycling its tones one note per ~16ms.
       // This rapid arpeggiation (not a sustained chord) is the core NES sound.
-      { const nArp=Math.max(1,Math.round(SPB/ARP)), av=menuMode?0.035:(boss?0.085:0.07),
+      { const nArp=Math.max(1,Math.round(SPB/ARP)), av=menuMode?0.06:(boss?0.085:0.07),
           at=[c.t[0],c.t[1],c.t[2],c.t[0]+12];   // roll up an octave for motion
         for(let a=0;a<nArp;a++){ const tone=at[arpCtr&3]; arpCtr++;
           vPulse(mNext+a*ARP, MIDI(tone), ARP*1.25, 0.25, av); } }
       if(menuMode){
-        if(st===0) vKick(mNext);
-        if(st%4===0) vHat(mNext,true);
-        if(st%2===0) vTri(mNext, MIDI(c.r), SPB*1.9, 0.22);   // steady triangle bass
-        for(const ln of LEAD){ if(ln[0]===s) vPulse(mNext, MIDI(ln[1]), SPB*ln[2]*0.95, ln[3]||0.25, 0.16, {vib:8}); }
+        // driving menu arrangement — backbeat, 16th hats, galloping bass
+        if(st===0||st===8) vKick(mNext);
+        if(st===4||st===12) vSnare(mNext);
+        vHat(mNext, st%2===1);
+        vTri(mNext, MIDI(c.r+((st%2)?12:0)), SPB*0.9, (st%2)?0.16:0.26);
+        for(const ln of LEAD){ if(ln[0]===s){ const acc=ln[2]>=4; vPulse(mNext, MIDI(ln[1]), SPB*ln[2]*0.95, ln[3]||0.25, 0.18, {vib:acc?7:0}); } }
       } else {
         if(st===0||st===8||(boss&&st===14)) vKick(mNext);
         if(st===4||st===12) vSnare(mNext);

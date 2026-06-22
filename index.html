@@ -364,7 +364,7 @@
    never hardcoded into game flow, and every piece carries a `source`.
    ===================================================================== */
 
-const VERSION = '0.11.0';
+const VERSION = '0.11.1';
 const W = 640, H = 720;
 const COL = {
   player:'#38e8ff', drifter:'#ff8c42', weaver:'#ffd166', gunner:'#ff5470', tank:'#c44569',
@@ -563,15 +563,17 @@ function applyAudioSettings(){
 }
 { const cog=document.getElementById('cogBtn'), panel=document.getElementById('settings'),
       m=document.getElementById('setMusic'), v=document.getElementById('setVol'), s=document.getElementById('setSfx');
-  if(!META.audio)META.audio={music:true,vol:0.8,sfx:true};
+  // META is a `let` declared further down — don't touch it at eval time (TDZ).
+  // These handlers all run after init, so resolve/guard the config lazily.
+  const cfg=()=>(META.audio||(META.audio={music:true,vol:0.8,sfx:true}));
   if(cog&&panel){
     cog.addEventListener('click',(e)=>{ e.stopPropagation(); Audio2.init(); audioArmed=true; panel.classList.toggle('open'); Audio2.draft(); });
     document.addEventListener('click',(e)=>{ if(panel.classList.contains('open')&&!panel.contains(e.target)&&e.target!==cog) panel.classList.remove('open'); });
   }
-  if(m)m.addEventListener('change',()=>{ META.audio.music=m.checked; Audio2.setMusic(m.checked); saveMeta(); });
-  if(v){ v.addEventListener('input',()=>{ const val=(+v.value)/100; META.audio.vol=val; Audio2.setMusicVol(val); });
+  if(m)m.addEventListener('change',()=>{ cfg().music=m.checked; Audio2.setMusic(m.checked); saveMeta(); });
+  if(v){ v.addEventListener('input',()=>{ const val=(+v.value)/100; cfg().vol=val; Audio2.setMusicVol(val); });
          v.addEventListener('change',saveMeta); }
-  if(s)s.addEventListener('change',()=>{ META.audio.sfx=s.checked; Audio2.setSfx(s.checked); if(s.checked)Audio2.draft(); saveMeta(); });
+  if(s)s.addEventListener('change',()=>{ cfg().sfx=s.checked; Audio2.setSfx(s.checked); if(s.checked)Audio2.draft(); saveMeta(); });
 }
 document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
 function toLocal(cx,cy){ const r=canvas.getBoundingClientRect(); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
